@@ -368,7 +368,7 @@ end
 DefaultTrackedHealingBuffs = {"Amplify Magic", "Dampen Magic", "Master Demonologist", "Apotheosis"}
 DefaultTrackedHealingDebuffs = {"Mortal Strike", "Wound Poison", "Curse of the Deadwood", "Veil of Shadow", "Mortal Wound", 
     "Gehennas' Curse", "Necrotic Poison", "Blood Fury", "Necrotic Aura", "Brood Affliction: Green",
-    "Shadowbane Curse", "Leeching Bite" -- Turtle WoW
+    "Shadowbane Curse", "Leeching Bite", "Foulfire Bolt", "Spores of Corruption" -- Turtle WoW
 }
 -- Tracked buffs for all classes
 DefaultTrackedBuffs = {
@@ -391,7 +391,7 @@ DefaultClassTrackedBuffs = {
         "Greater Blessing of Salvation", "Greater Blessing of Sanctuary", "Greater Blessing of Kings", 
         "Greater Blessing of Light", "Daybreak", "Blessing of Freedom", "Hand of Freedom", "Redoubt", "Holy Shield"},
     ["PRIEST"] = {"Prayer of Fortitude", "Power Word: Fortitude", "Prayer of Spirit", "Divine Spirit", 
-        "Prayer of Shadow Protection", "Shadow Protection", "Holy Champion", "Champion's Grace", "Empower Champion", 
+        "Prayer of Shadow Protection", "Shadow Protection", "Lightwell", "Holy Champion", "Champion's Grace", "Empower Champion", 
         "Champion's Bond", "Fear Ward", "Inner Fire", "Renew", "Greater Heal", "Lightwell Renew", "Inspiration", 
         "Fade", "Reactive Fade", "Spirit Tap", "Enlighten", "Enlightened"},
     ["WARRIOR"] = {"Battle Shout"},
@@ -425,17 +425,18 @@ DefaultTrackedDebuffs = {
     "Frost Breath", "Death Coil", -- Karazhan Crypts
     "Phantom Scream", "Smoke Bomb", "Terrifying Presence", "Moroes Curse", -- Kara10
     "Acid Breath", "Call of Nightmare", "Dreamstate", "Fever Dream", -- Emerald Sanctum
+    "Withered Defiling", "Paralyzing Poison", -- Timbermaw Hold
     "Poison Bolt", "Plague", -- AQ40
     "Corrupted Mind", "Frost Blast", "Veil of Darkness", "Web Wrap", "Poison Charge", "Life Drain" -- Naxxramas
 }
 -- Tracked debuffs for specific classes
 DefaultClassTrackedDebuffs = {
-    ["PRIEST"] = {"Weakened Soul"}
+    ["PRIEST"] = {"Weakened Soul", "Holy Attenuation"}
 }
 
 -- Debuffs which should highlight the unit frame
 DefaultImportantDebuffs = {
-    "Living Bomb", "Plague", "Web Wrap", "Frost Blast", "Poison Charge"
+    "Living Bomb", "Plague", "Web Wrap", "Frost Blast", "Poison Charge", "Withered Defiling"
 }
 
 -- Debuffs which are dispellable but should not change the health bar color
