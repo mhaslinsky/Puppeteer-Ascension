@@ -414,6 +414,7 @@ DefaultTrackedDebuffs = {
     "Fear", "Seduction", "Enslave Demon", -- Warlock
     "Recently Bandaged", "Greater Dreamless Sleep", "Dreamless Sleep", "Resurrection Sickness", "Ghost", "Net", -- Generic
     "Deafening Screech", "Hooked Net", "Web Explosion", "Chains of Ice", "Acid Spit", -- Applied by mobs
+    "Gust of Wind", -- Windhorn Canyon
     "Fungal Spores", -- Stormwrought Castle
     "Sonic Burst", -- Uldaman
     "Hex", "Freeze Solid", "Petrify", -- Zul'Farrak
@@ -425,9 +426,11 @@ DefaultTrackedDebuffs = {
     "Frost Breath", "Death Coil", -- Karazhan Crypts
     "Phantom Scream", "Smoke Bomb", "Terrifying Presence", "Moroes Curse", -- Kara10
     "Acid Breath", "Call of Nightmare", "Dreamstate", "Fever Dream", -- Emerald Sanctum
-    "Withered Defiling", "Paralyzing Poison", "Seed of Corruption", "Fearful Roar", "Poison Cloud", "Phasebound", "Lucid Nightmare", "Dream Fever", -- Timbermaw Hold
+    "Withered Defiling", "Paralyzing Poison", "Seed of Corruption", "Fearful Roar", "Poison Cloud", "Phasebound", -- Timbermaw Hold
+    "Lucid Nightmare", "Dream Fever", "Mind-Shattering Rumble", "Fixate",
     "Poison Bolt", "Plague", -- AQ40
-    "Corrupted Mind", "Frost Blast", "Veil of Darkness", "Web Wrap", "Poison Charge", "Life Drain", "Intercept Stun" -- Naxxramas
+    "Corrupted Mind", "Frost Blast", "Veil of Darkness", "Web Wrap", "Poison Charge", "Life Drain", "Intercept Stun", -- Naxxramas
+    "Red Moon", "Blue Moon", "Blood Siphon", "Invoked Silence", "Dragon Roar", "Surge of Mana", "Gaze of Incantagos" -- Kara40
 }
 -- Tracked debuffs for specific classes
 DefaultClassTrackedDebuffs = {
@@ -436,7 +439,8 @@ DefaultClassTrackedDebuffs = {
 
 -- Debuffs which should highlight the unit frame
 DefaultImportantDebuffs = {
-    "Living Bomb", "Plague", "Web Wrap", "Frost Blast", "Poison Charge", "Withered Defiling", "Seed of Corruption"
+    "Living Bomb", "Plague", "Web Wrap", "Frost Blast", "Poison Charge", "Withered Defiling", "Seed of Corruption", 
+    "Blood Siphon", "Surge of Mana"
 }
 
 -- Debuffs which are dispellable but should not change the health bar color

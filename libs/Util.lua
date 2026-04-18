@@ -1520,9 +1520,11 @@ do -- This is done to prevent crashes from checking sight too early
     local sightEnableFrame = CreateFrame("Frame")
     sightEnableFrame:RegisterEvent("ADDON_LOADED")
     sightEnableFrame:SetScript("OnEvent", function()
-        if arg1 == "Puppeteer" and UnitXPSP3 then
-            IsInSight = function(unit)
-                return UnitXP("inSight", "player", unit) -- UnitXP SP3 modded function
+        if arg1 == "Puppeteer" then
+            if UnitXPSP3 then
+                IsInSight = function(unit)
+                    return UnitXP("inSight", "player", unit) -- UnitXP SP3 modded function
+                end
             end
             sightEnableFrame:SetScript("OnEvent", nil)
         end
