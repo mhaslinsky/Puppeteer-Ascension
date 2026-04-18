@@ -498,7 +498,7 @@ eventFrame:SetScript("OnEvent", function()
     if event == "START" and target then
         if UnitCanAssist(caster, target ~= "" and target or caster) and duration > 0 then
             if PRAYER_OF_HEALING_IDS[spellID] then
-                local inRange = PTUtil.GetSurroundingPartyMembers(target ~= "" and target or caster)
+                local inRange = PTUtil.GetSurroundingPartyMembers(target ~= "" and target or caster, 28)
                 local casterName = UnitName(caster)
                 local expectedHeal = GetExpectedHeal(casterName, spellID)
                 AddIncomingMultiCast(inRange, caster, spellID, expectedHeal, duration)
@@ -546,7 +546,7 @@ castIconFrame:SetScript("OnEvent", function()
         end
         local inRange
         if PRAYER_OF_HEALING_IDS[spellID] then
-            inRange = PTUtil.GetSurroundingPartyMembers(target ~= "" and target or caster)
+            inRange = PTUtil.GetSurroundingPartyMembers(target ~= "" and target or caster, 28)
         end
         inRange = inRange or compost:Acquire(target)
         
