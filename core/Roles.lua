@@ -152,8 +152,6 @@ TalentCountRoleMap = {
     }
 }
 
-local talentMessageHandler
-local noop = function() end
 
 local processingRoles = false
 local isHooked = false
@@ -252,9 +250,9 @@ end)
 
 local function requestTalents(name)
     if name == UnitName("player") then
-        if talentMessageHandler then
+        if InspectTalentsFrame_HandleMessage then
             -- Send our own talents to ourself (lol)
-            talentMessageHandler("INSTalentShow", UnitName("player"))
+            InspectTalentsFrame_HandleMessage("INSTalentShow", UnitName("player"))
             return
         end
     end
