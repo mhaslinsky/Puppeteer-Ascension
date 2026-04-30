@@ -408,6 +408,7 @@ DefaultClassTrackedBuffs = {
 DefaultTrackedDebuffs = {
     "Forbearance", "Hammer of Justice", -- Paladin
     "Silence", "Mind Control", "Psychic Scream", -- Priest
+    "Blind", "Sap", "Cheap Shot", -- Rogue
     "Death Wish", "Intimidating Shout", -- Warrior
     "Enrage", "Entangling Roots", -- Druid
     "Frost Nova", "Polymorph", -- Mage
