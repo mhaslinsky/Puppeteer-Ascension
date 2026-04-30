@@ -453,8 +453,10 @@ function PTUnitFrameGroup:GetSortedUIs()
                 if not a or not b then
                     return false
                 end
-                local aRank = ((rolePriority[a:GetRole()] or 4) * 1000) + util.IndexOf(groupCopy, a) + (UnitIsUnit("player", a:GetUnit()) and 0 or 100)
-                local bRank = ((rolePriority[b:GetRole()] or 4) * 1000) + util.IndexOf(groupCopy, b) + (UnitIsUnit("player", b:GetUnit()) and 0 or 100)
+                local aRank = ((rolePriority[a:GetRole()] or 4) * 1000) + util.IndexOf(groupCopy, a) + 
+                    (UnitIsUnit("player", a:GetUnit()) and 0 or 100) + (UnitIsUnit("pet", a:GetUnit()) and 0 or 99)
+                local bRank = ((rolePriority[b:GetRole()] or 4) * 1000) + util.IndexOf(groupCopy, b) + 
+                    (UnitIsUnit("player", b:GetUnit()) and 0 or 100) + (UnitIsUnit("pet", b:GetUnit()) and 0 or 99)
                 return aRank < bRank
             end
             table.sort(group, roleSorter)

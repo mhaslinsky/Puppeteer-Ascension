@@ -30,7 +30,7 @@ f:SetScript("OnEvent", function()
         unit = UnitGUID("mouseover")
     end
 
-    if UnitCanAttack("player", unit) and (UnitAffectingCombat(unit) or (unit == "target" and UnitHealth(unit) > 0)) then
+    if UnitCanAttack("player", unit) and not UnitIsCharmed("player") and (UnitAffectingCombat(unit) or (unit == "target" and UnitHealth(unit) > 0)) then
         if not CustomUnitsMap["enemy"] then
             return
         end

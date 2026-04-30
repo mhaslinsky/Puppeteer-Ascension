@@ -136,7 +136,7 @@ end
 -- Classes not listed have only DPS specs and are not bothered to be scanned.
 TalentCountRoleMap = {
     PRIEST = {
-        "Healer", "Healer", "Damage"
+        "Damage", "Healer", "Damage"
     },
     PALADIN = {
         "Healer", "Tank", "Damage"
@@ -152,21 +152,33 @@ TalentCountRoleMap = {
     }
 }
 
-local talentMessageHandler
-local noop = function() end
 
--- We need to stop talent messages from being processed, otherwise the user will see errors
+local processingRoles = false
+local isHooked = false
+local function hookTalentMessageHandler()
+    if not isHooked and InspectTalentsFrame_HandleMessage then
+        isHooked = true
+        InspectTalentsFrame_HandleMessage_Original = InspectTalentsFrame_HandleMessage
+        _G.InspectTalentsFrame_HandleMessage = function(message, sender)
+            -- Only pass through talent requests while scanning talents
+            if not processingRoles or strfind(message, "INSTalentShow", 1, true) then
+                InspectTalentsFrame_HandleMessage_Original(message, sender)
+            end
+        end
+    end
+end
+
 local function disableTalentMessageProcessing()
-    if not IsAddOnLoaded("Blizzard_TalentUI") then
+    if not IsAddOnLoaded("Blizzard_InspectUI") or not IsAddOnLoaded("Blizzard_TalentUI") then
         LoadAddOn("Blizzard_InspectUI")
         LoadAddOn("Blizzard_TalentUI")
-        talentMessageHandler = InspectTalentsFrame_HandleMessage
     end
-    _G.InspectTalentsFrame_HandleMessage = noop
+    hookTalentMessageHandler()
+    processingRoles = true
 end
 
 local function enableTalentMessageProcessing()
-    _G.InspectTalentsFrame_HandleMessage = talentMessageHandler
+    processingRoles = false
 end
 
 local PlayerTalentData = {}
@@ -238,9 +250,9 @@ end)
 
 local function requestTalents(name)
     if name == UnitName("player") then
-        if talentMessageHandler then
+        if InspectTalentsFrame_HandleMessage then
             -- Send our own talents to ourself (lol)
-            talentMessageHandler("INSTalentShow", UnitName("player"))
+            InspectTalentsFrame_HandleMessage("INSTalentShow", UnitName("player"))
             return
         end
     end

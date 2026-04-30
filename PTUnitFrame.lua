@@ -1730,17 +1730,15 @@ local function PTArrowUpdater_OnUpdate()
     end
     local enemy = UnitCanAttack(unit, "player")
     local unitFrame = Puppeteer.MouseoverFrame
-    local inRange = PTUnit.Get(unit):GetDistance() > 
+    local outOfRange = PTUnit.Get(unit):GetDistance() > 
         (enemy and -1 or (UnitIsDead(unit) and deadArrowDistance or (unitFrame:GetOutOfRangeThreshold() - 1)))
-    if inRange and util.GetUnitPosition(unitFrame:GetResolvedUnit()) then
+    if outOfRange and util.GetUnitPosition(unitFrame:GetResolvedUnit()) then
         local overlay = unitFrame.overlayContainer
         if arrow:GetParent() ~= overlay then
             arrow:SetParent(overlay)
             arrow:SetPoint("CENTER", unitFrame.button, "CENTER")
             arrow:SetFrameLevel(overlay:GetFrameLevel() + 50)
         end
-
-        local cameraAngle = util.GetCameraFacingAngle(unit)
 
         if enemy then
             local facingAngle = util.GetFacingAngle(unit)
@@ -1751,6 +1749,7 @@ local function PTArrowUpdater_OnUpdate()
             end
         end
         arrow:Show()
+        local cameraAngle = util.GetCameraFacingAngle(unit)
         arrow:SetDirection(cameraAngle)
     else
         arrow:Hide()

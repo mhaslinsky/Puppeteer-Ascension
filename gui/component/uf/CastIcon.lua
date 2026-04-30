@@ -76,7 +76,7 @@ local importantCasts = {
     "Soulstone Resurrection",
     "Proclaim Champion",
     "Revive Champion",
-    "Shackle Undead", "Mind Control", "Fear", "Polymorph", "Polymorph: Turtle", "Polymorph: Cow"
+    "Shackle Undead", "Mind Control", "Fear", "Polymorph", "Polymorph: Turtle", "Polymorph: Cow", "Polymorph: Rodent"
 }
 importantCasts = PTUtil.ToSet(importantCasts)
 PTLocale.Keys(importantCasts)
