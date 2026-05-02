@@ -87,14 +87,17 @@ RegisterEventHandler("PLAYER_TARGET_CHANGED", function()
     for _, ui in ipairs(AllUnitFrames) do
         ui:EvaluateTarget()
     end
-    local exists, guid = UnitExists("target")
+    local exists = UnitExists("target")
+    local guid = UnitGUID("target")
     if util.IsSuperWowPresent() then
         PTUnit.UpdateGuidCaches()
     end
-    
+
     PTUnit.Get("target"):UpdateAll()
-    if util.IsSuperWowPresent() then
+    if GuidRoster then
         GuidRoster.SetUnitGuid("target", guid)
+    end
+    if util.IsSuperWowPresent() then
         PTHealPredict.SetRelevantGUIDs(GuidRoster.GetTrackedGuids())
     end
 
