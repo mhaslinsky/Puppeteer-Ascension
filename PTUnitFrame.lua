@@ -1133,16 +1133,14 @@ function PTUnitFrame:ApplyAuraTooltip(auraFrame)
             local seconds = math.floor(auraTime.startTime - GetTime() + auraTime.duration)
             local time
             local format
+            -- Phase 3: SPELL_TIME_REMAINING_*_P1 globals don't exist on 3.3.5a (vanilla-only).
             if seconds < 60 then
                 time = seconds
-                if time == 1 then
-                    format = SPELL_TIME_REMAINING_SEC
-                else
-                    format = SPELL_TIME_REMAINING_SEC_P1
-                end
+                format = (time == 1 and (SPELL_TIME_REMAINING_SEC or "%d second remaining"))
+                    or (SPELL_TIME_REMAINING_SEC_P1 or "%d seconds remaining")
             else
                 time = math.ceil(seconds / 60)
-                format = SPELL_TIME_REMAINING_MIN_P1
+                format = SPELL_TIME_REMAINING_MIN_P1 or "%d minutes remaining"
             end
             if auraTime.ownerName and seconds > -10 then
                 tooltip:AddDoubleLine(string.format(format, time), "Caster: "..auraTime.ownerName)
@@ -1240,7 +1238,7 @@ function PTUnitFrame:CreateAura(component, aura, xOffset, yOffset, type, size)
         end
     end
 
-    if aura.time then
+    if aura.time and component.duration then
         local startTime = aura.time.startTime
         local endTime = aura.time.endTime
         local duration = aura.time.duration

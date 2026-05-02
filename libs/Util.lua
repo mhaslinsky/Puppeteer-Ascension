@@ -600,17 +600,13 @@ function IsFeigning(unit)
     if not cache then
         local unitClass = GetClass(unit)
         if unitClass == "HUNTER" then
-            local superwow = IsSuperWowPresent()
-            for i = 1, 32 do
-                local texture, _, id = UnitBuff(unit, i)
-                if superwow then -- Use the ID if SuperWoW is present
-                    if id == 5384 then -- 5384 is Feign Death
-                        return true
-                    end
-                else -- Use the texture otherwise
-                    if texture == "Interface\\Icons\\Ability_Rogue_FeignDeath" then
-                        return true
-                    end
+            for i = 1, 40 do
+                local name, _, _, _, _, _, _, _, _, _, id = UnitAura(unit, i, "HELPFUL")
+                if not name then
+                    break
+                end
+                if id == 5384 then -- 5384 is Feign Death
+                    return true
                 end
             end
         end
@@ -620,20 +616,17 @@ function IsFeigning(unit)
 end
 
 function HasAura(unit, auraType, auraTexture, auraID)
-    local auraFunc = auraType == "Buff" and UnitBuff or UnitDebuff
-    local checkCount = auraType == "Buff" and 32 or 16
-
-    local superwow = IsSuperWowPresent()
-    for i = 1, checkCount do
-        local texture, _, id = auraFunc(unit, i)
-        if superwow and auraID then
-            if auraID == id then
-                return true
-            end
-        else
-            if texture == auraTexture then
-                return true
-            end
+    local filter = auraType == "Buff" and "HELPFUL" or "HARMFUL"
+    for i = 1, 40 do
+        local name, _, texture, _, _, _, _, _, _, _, id = UnitAura(unit, i, filter)
+        if not name then
+            break
+        end
+        if auraID and auraID == id then
+            return true
+        end
+        if auraTexture and texture == auraTexture then
+            return true
         end
     end
     return false
