@@ -19,17 +19,13 @@ Dependencies: None
 local ACELIBRARY_MAJOR = "AceLibrary"
 local ACELIBRARY_MINOR = "$Revision: 17638 $"
 
-if loadstring("return function(...) return ... end") and AceLibrary:HasInstance(ACELIBRARY_MINOR) then return end -- lua51 check
-local table_setn
-do
-	local version = GetBuildInfo()
-	if string.find(version, "^2%.") then
-		-- 2.0.0
-		table_setn = function() end
-	else
-		table_setn = table.setn
-	end
-end
+-- Phase 2a patch: AceLibrary global doesn't exist on first load; the original short-circuit
+-- crashes on Lua 5.1 (3.3.5a) because `AceLibrary:HasInstance` is evaluated unconditionally.
+-- Bridge fix only — this whole file is deleted in Phase 2b/3 once Ace2 deps are migrated out.
+if loadstring("return function(...) return ... end") and AceLibrary and AceLibrary:HasInstance(ACELIBRARY_MINOR) then return end -- lua51 check
+-- Phase 2a patch: table.setn exists in 3.3.5a's Lua 5.1 but throws "'setn' is obsolete"
+-- when called. Always stub — Lua 5.1's length operator handles what setn used to track.
+local table_setn = function() end
 
 local string_gfind = string.gmatch or string.gfind
 

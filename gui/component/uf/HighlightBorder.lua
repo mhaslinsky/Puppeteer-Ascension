@@ -1,5 +1,4 @@
 PTHighlightBorder = PTGuiComponent:Extend("puppeteer_highlight_border")
-local compost = AceLibrary("Compost-2.0")
 local util = PTUtil
 local dashes = {}
 

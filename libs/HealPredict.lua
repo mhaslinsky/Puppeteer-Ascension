@@ -9,7 +9,6 @@ PTHealPredict = {}
 PTUtil.SetEnvironment(PTHealPredict)
 local _G = getfenv(0)
 
-local compost = AceLibrary("Compost-2.0")
 
 RelevantGUIDs = {} -- A set of GUIDs to listen to
 
@@ -173,7 +172,6 @@ function RemoveAllCastIcons()
         for _, icon in ipairs(castIcons[caster]) do
             icon:End(false)
         end
-        compost:Reclaim(icons)
         castIcons[caster] = nil
     end
 end
@@ -206,12 +204,9 @@ function RemoveIncomingCast(caster, successful)
     if cast then
         for _, target in ipairs(cast["targets"]) do
             local incomingHeals = IncomingHeals[target]
-            compost:Reclaim(incomingHeals[caster])
             incomingHeals[caster] = nil
             UpdateTarget(target)
         end
-        compost:Reclaim(cast["targets"])
-        compost:Reclaim(cast)
         Casts[caster] = nil
     end
 end
@@ -304,7 +299,6 @@ function UpdateCache(heal, name)
     playerCache[spellID] = adjustedHeal
     playerCache["lastSeen"] = time()
 
-    compost:Reclaim(lastCastedSpell)
     print(colorize(name.."'s "..spellID..": "..prevHeal.." -> "..adjustedHeal, 0, 0.8, 0.2))
 end
 
@@ -361,7 +355,6 @@ function RemoveHoT(spellName, targetGuid)
     if hot["startTime"] + 0.5 > GetTime() and not hot["swiftmend"] then
         return
     end
-    compost:Reclaim(hot)
     IncomingHots[targetGuid][spellName] = nil
     UpdateTarget(targetGuid)
 end
@@ -419,7 +412,7 @@ eventFrame:SetScript("OnEvent", function()
         if event == "START" then
             if target then
                 if not ResurrectionTargets[target] then
-                    ResurrectionTargets[target] = compost:GetTable()
+                    ResurrectionTargets[target] = {}
                 end
                 local resses = ResurrectionTargets[target]
                 resses[caster] = compost:AcquireHash("startTime", GetTime(), "castTime", duration)
@@ -430,11 +423,9 @@ eventFrame:SetScript("OnEvent", function()
                 local target = cast["targets"][1]
                 local resses = ResurrectionTargets[target]
                 if resses and resses[caster] then
-                    compost:Reclaim(resses[caster])
                     resses[caster] = nil
                     
                     if not next(resses) then
-                        compost:Reclaim(resses)
                         ResurrectionTargets[target] = nil
                     end
                 end
@@ -523,7 +514,6 @@ castIconFrame:SetScript("OnEvent", function()
             for _, icon in ipairs(castIcons[caster]) do
                 icon:End(true)
             end
-            compost:Reclaim(castIcons[caster])
             castIcons[caster] = nil
         end
     end
@@ -533,7 +523,6 @@ castIconFrame:SetScript("OnEvent", function()
                 for _, icon in ipairs(castIcons[caster]) do
                     icon:End(false)
                 end
-                compost:Reclaim(castIcons[caster])
                 castIcons[caster] = nil
             end
         end
@@ -564,12 +553,11 @@ castIconFrame:SetScript("OnEvent", function()
                 local healAmount = UnitCanAssist(caster, target) and GetExpectedHeal(UnitName(caster), spellID) or 0
                 icon:Start(spellName, tex, duration / 1000, caster, healAmount, targetFrame)
                 if not castIcons[caster] then
-                    castIcons[caster] = compost:GetTable()
+                    castIcons[caster] = {}
                 end
                 table.insert(castIcons[caster], icon)
             end
         end
-        compost:Reclaim(inRange)
     end
 end)
 
@@ -586,7 +574,6 @@ eventFrame:SetScript("OnUpdate", function()
             for caster, cast in pairs(casts) do
                 if cast["startTime"] + 15 < time then
                     print(colorize("Removed "..caster.."'s heal on "..receiver.." for taking too long", 1, 0, 0))
-                    compost:Reclaim(cast)
                     casts[caster] = nil
                     UpdateTarget(receiver)
                 end
@@ -598,7 +585,6 @@ eventFrame:SetScript("OnUpdate", function()
                 if hot["startTime"] + 25 < time then
                     print(colorize("Removed "..hot["caster"].."'s "..name.." (HoT) on "..
                         receiver.." for taking too long", 1, 0, 0))
-                    compost:Reclaim(hot)
                     hots[name] = nil
                     UpdateTarget(receiver)
                 end
@@ -610,14 +596,12 @@ eventFrame:SetScript("OnUpdate", function()
                 if res["startTime"] + 20 < time then
                     print(colorize("Removed "..caster.."'s resurrection on "..
                         target.." for taking too long", 1, 0, 0))
-                    compost:Reclaim(res)
                     resses[caster] = nil
                     ResurrectionTargets[target] = nil
                     UpdateTarget(target)
                 end
             end
             if not ResurrectionTargets[target] then -- Must've been removed
-                compost:Reclaim(resses)
             end
         end
 
@@ -627,7 +611,6 @@ eventFrame:SetScript("OnUpdate", function()
                 for _, icon in ipairs(castIcons[caster]) do
                     icon:End(false)
                 end
-                compost:Reclaim(castIcons[caster])
                 castIcons[caster] = nil
             end
         end

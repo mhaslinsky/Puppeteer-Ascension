@@ -1,6 +1,5 @@
 PTUtil.SetEnvironment(Puppeteer)
 local _G = getfenv(0)
-local compost = AceLibrary("Compost-2.0")
 local util = PTUtil
 local colorize = util.Colorize
 local GetKeyModifier = util.GetKeyModifier
@@ -312,9 +311,9 @@ function ApplySpellsTooltip(attachTo, unit, owner)
         PTUnit.Get(unit):HasBuffIDOrName(45568, T("Holy Champion")) and UnitAffectingCombat("player")
     local resEntry
     if canReviveChampion then
-        resEntry = UpdateBindingDisplay(SpecialSpellBindings[T("Revive Champion")], compost:GetTable())
+        resEntry = UpdateBindingDisplay(SpecialSpellBindings[T("Revive Champion")], {})
     elseif canResurrect then
-        resEntry = UpdateBindingDisplay(SpecialSpellBindings[util.ResurrectionSpells[selfClass]], compost:GetTable())
+        resEntry = UpdateBindingDisplay(SpecialSpellBindings[util.ResurrectionSpells[selfClass]], {})
     end
     
     --StartTiming("BindingDisplays")
@@ -342,7 +341,6 @@ function ApplySpellsTooltip(attachTo, unit, owner)
         end
     end
     if resEntry then
-        compost:Reclaim(resEntry)
     end
     SpellsTooltip:Show()
     --EndTiming("SpellsTooltip")

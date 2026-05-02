@@ -63,7 +63,7 @@ function PTGuiScrollFrame:SetApplyScrollbarPadding(applyPadding)
 end
 
 function PTGuiScrollFrame:UpdateScrollRange()
-    util.CallWithThis(self:GetHandle(), ScrollFrame_OnScrollRangeChanged)
+    ScrollFrame_OnScrollRangeChanged(self:GetHandle())
     return self
 end
 

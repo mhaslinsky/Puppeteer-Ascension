@@ -13,7 +13,6 @@ local AllUnitsSet = util.AllUnitsSet
 local superwow = util.IsSuperWowPresent()
 local canGetAuraIDs = util.CanClientGetAuraIDs()
 
-local compost = AceLibrary("Compost-2.0")
 
 -- Non-instance variable
 -- Key: Unit ID(Unmodded) or GUID(SuperWoW) | Value: PTUnit Instance
@@ -81,10 +80,8 @@ function UpdateGuidCaches()
     end
     for garbageGuid, cache in pairs(prevCached) do
         cache:Dispose()
-        compost:Reclaim(cache)
         cached[garbageGuid] = nil
     end
-    compost:Reclaim(prevCached)
 end
 
 -- Likely never needed to be called when using GUIDs
@@ -107,7 +104,7 @@ function GetAllUnits()
 end
 
 function PTUnit:New(unit)
-    local obj = compost:AcquireHash("Unit", unit)
+    local obj = {Unit = unit}
     setmetatable(obj, self)
     self.__index = self
     PTUnit.Cached[unit] = obj
@@ -116,25 +113,15 @@ function PTUnit:New(unit)
     obj.IsNew = true
     obj.IsSelf = UnitIsUnit(unit, "player")
     if superwow then
-        obj.AuraTimes = compost:GetTable()
-        obj.AuraTimesByName = compost:GetTable()
+        obj.AuraTimes = {}
+        obj.AuraTimesByName = {}
     end
     obj:UpdateAll()
     return obj
 end
 
 function PTUnit:Dispose()
-    compost:Reclaim(self.Buffs, 1)
-    compost:Reclaim(self.BuffsMap, 1)
-    compost:Reclaim(self.BuffsIDSet)
-    compost:Reclaim(self.Debuffs, 1)
-    compost:Reclaim(self.DebuffsMap, 1)
-    compost:Reclaim(self.DebuffsIDSet)
-    compost:Reclaim(self.TypedDebuffs, 1)
-    compost:Reclaim(self.AfflictedDebuffTypes)
-    compost:Reclaim(self.TrackedDebuffTypes)
     util.CompostReclaim(self.AuraTimes)
-    compost:Reclaim(self.AuraTimesByName)
 end
 
 function PTUnit:UpdateAll()
@@ -205,7 +192,8 @@ function PTUnit:IsBeingResurrected()
     if PTHealPredict then
         return PTHealPredict.IsBeingResurrected(self.Unit)
     end
-    return Puppeteer.HealComm:UnitisResurrecting(UnitName(self.Unit))
+    -- Phase 2b: HealComm-1.0 stubbed; LibHealComm-4.0 wires up in Phase 3.
+    return false
 end
 
 function PTUnit:GetResurrectionCasts()
@@ -215,39 +203,35 @@ function PTUnit:GetResurrectionCasts()
     if PTHealPredict then
         return PTHealPredict.GetResurrectionCount(self.Unit)
     end
-    return Puppeteer.HealComm:UnitisResurrecting(UnitName(self.Unit)) and 1 or 0
+    -- Phase 2b: HealComm-1.0 stubbed; LibHealComm-4.0 wires up in Phase 3.
+    return 0
 end
 
 function PTUnit:AllocateAuras()
-    self.Buffs = compost:GetTable()
-    self.BuffsMap = compost:GetTable()
-    self.BuffsIDSet = compost:GetTable()
-    self.Debuffs = compost:GetTable()
-    self.DebuffsMap = compost:GetTable()
-    self.DebuffsIDSet = compost:GetTable()
-    self.TypedDebuffs = compost:GetTable()
-    self.AfflictedDebuffTypes = compost:GetTable()
-    self.TrackedDebuffTypes = compost:GetTable()
+    self.Buffs = {}
+    self.BuffsMap = {}
+    self.BuffsIDSet = {}
+    self.Debuffs = {}
+    self.DebuffsMap = {}
+    self.DebuffsIDSet = {}
+    self.TypedDebuffs = {}
+    self.AfflictedDebuffTypes = {}
+    self.TrackedDebuffTypes = {}
 end
 
 function PTUnit:ClearAuras()
     if not self.AurasPopulated or self == PTUnit then
         return
     end
-    compost:Reclaim(self.Buffs, 1)
-    compost:Reclaim(self.BuffsMap, 1)
-    compost:Erase(self.BuffsIDSet)
-    compost:Reclaim(self.Debuffs, 1)
-    compost:Reclaim(self.DebuffsMap, 1)
-    compost:Erase(self.DebuffsIDSet)
-    compost:Reclaim(self.TypedDebuffs, 1)
-    compost:Erase(self.AfflictedDebuffTypes)
-    compost:Erase(self.TrackedDebuffTypes)
-    self.Buffs = compost:GetTable()
-    self.BuffsMap = compost:GetTable()
-    self.Debuffs = compost:GetTable()
-    self.DebuffsMap = compost:GetTable()
-    self.TypedDebuffs = compost:GetTable()
+    util.ClearTable(self.BuffsIDSet)
+    util.ClearTable(self.DebuffsIDSet)
+    util.ClearTable(self.AfflictedDebuffTypes)
+    util.ClearTable(self.TrackedDebuffTypes)
+    self.Buffs = {}
+    self.BuffsMap = {}
+    self.Debuffs = {}
+    self.DebuffsMap = {}
+    self.TypedDebuffs = {}
     self.HasHealingModifier = false
     self.AurasPopulated = false
     self.HasImportantDebuff = false
@@ -298,9 +282,9 @@ function PTUnit:UpdateAuras()
                 claimedAuras[auraTime] = 1
             end
         end
-        local buff = compost:AcquireHash("name", name, "index", index, "texture", texture, "stacks", stacks, "type", type, "id", id, "time", auraTime)
+        local buff = {name = name, index = index, texture = texture, stacks = stacks, type = type, id = id, time = auraTime}
         if not buffsMap[name] then
-            buffsMap[name] = compost:GetTable()
+            buffsMap[name] = {}
         end
         if id ~= nil then
             buffsIDSet[id] = true
@@ -343,9 +327,9 @@ function PTUnit:UpdateAuras()
                 claimedAuras[auraTime] = 1
             end
         end
-        local debuff = compost:AcquireHash("name", name, "index", index, "texture", texture, "stacks", stacks, "type", type, "id", id, "time", auraTime)
+        local debuff = {name = name, index = index, texture = texture, stacks = stacks, type = type, id = id, time = auraTime}
         if not debuffsMap[name] then
-            debuffsMap[name] = compost:GetTable()
+            debuffsMap[name] = {}
         end
         if id ~= nil then
             debuffsIDSet[id] = true
@@ -357,7 +341,7 @@ function PTUnit:UpdateAuras()
                 trackedDebuffTypes[type] = 1
             end
             if not typedDebuffs[type] then
-                typedDebuffs[type] = compost:GetTable()
+                typedDebuffs[type] = {}
             end
             table.insert(typedDebuffs[type], debuff)
         end
@@ -436,23 +420,22 @@ end
 
 function PTUnit:ApplyTimedAura(spellName, spellID, owner, duration, isNampower)
     if not self.AuraTimes[spellID] then
-        self.AuraTimes[spellID] = compost:GetTable()
+        self.AuraTimes[spellID] = {}
     end
     if not self.AuraTimesByName[spellName] then
-        self.AuraTimesByName[spellName] = compost:GetTable()
+        self.AuraTimesByName[spellName] = {}
     end
     duration = duration or 0
     local time = GetTime()
-    local entry = compost:AcquireHash(
-        "startTime", time,
-        "endTime", time + duration,
-        "duration", duration,
-        "owner", owner,
-        "ownerName", UnitName(owner),
-        "nampower", isNampower ~= nil and isNampower ~= false
-    )
+    local entry = {
+        startTime = time,
+        endTime = time + duration,
+        duration = duration,
+        owner = owner,
+        ownerName = UnitName(owner),
+        nampower = isNampower ~= nil and isNampower ~= false
+    }
     if self.AuraTimes[spellID][owner] then
-        compost:Reclaim(self.AuraTimes[spellID][owner])
     end
     self.AuraTimes[spellID][owner] = entry
     self.AuraTimesByName[spellName] = entry

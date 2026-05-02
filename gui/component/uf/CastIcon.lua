@@ -1,7 +1,6 @@
 -- Proof-of-concept spaghetti code for showing incoming spell casts
 
 PTCastIcon = PTGuiComponent:Extend("puppeteer_cast_icon")
-local compost = AceLibrary("Compost-2.0")
 local activeIcons = {}
 
 function PTCastIcon:New()
@@ -192,7 +191,7 @@ function PTCastIcon:Update()
 
         local castOrder = self.castOrder
         local icons = self.castIcons
-        local rankedCasts = compost:GetTable()
+        local rankedCasts = {}
         for _, icon in pairs(icons) do
             table.insert(rankedCasts, icon)
         end
@@ -209,7 +208,6 @@ function PTCastIcon:Update()
             end
             missingHealth = missingHealth - healAmount
         end
-        compost:Reclaim(rankedCasts)
         castOrder:SetText(tostring(castRank))
     elseif self.state == "FADING" then
         local progress = self:GetProgress()

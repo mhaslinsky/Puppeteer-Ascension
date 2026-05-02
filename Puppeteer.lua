@@ -1,17 +1,38 @@
 Puppeteer = {}
 PTUtil.SetEnvironment(Puppeteer)
 local _G = getfenv(0)
-_G.PuppeteerLib = AceLibrary("AceAddon-2.0"):new("AceEvent-2.0")
+
+-- Phase 2b: replaced AceAddon-2.0:new("AceEvent-2.0") with a minimal frame-based dispatcher.
+-- Only RegisterEvent is used by addon code (one call site, in this file).
+do
+    local frame = CreateFrame("Frame")
+    local handlers = {}
+    frame:SetScript("OnEvent", function(self, event, ...)
+        local list = handlers[event]
+        if not list then return end
+        for _, fn in ipairs(list) do
+            fn(...)
+        end
+    end)
+    local lib = {}
+    function lib:RegisterEvent(eventName, handler)
+        if not handlers[eventName] then
+            handlers[eventName] = {}
+            frame:RegisterEvent(eventName)
+        end
+        table.insert(handlers[eventName], handler)
+    end
+    _G.PuppeteerLib = lib
+end
 
 VERSION = GetAddOnMetadata("Puppeteer", "version")
 
 TestUI = false
 
-Banzai = AceLibrary("Banzai-1.0")
-HealComm = AceLibrary("HealComm-1.0")
+-- Phase 2b: Banzai/HealComm-1.0 ripped. Aggro now via native UnitThreatSituation.
+-- Heal prediction temporarily stubbed; Phase 3 wires up LibHealComm-4.0.
 GuidRoster = nil -- Will be nil if SuperWoW isn't present
 
-local compost = AceLibrary("Compost-2.0")
 local util = PTUtil
 local colorize = util.Colorize
 local GetKeyModifier = util.GetKeyModifier
@@ -124,7 +145,7 @@ local function OpenUnitFramesIterator()
         function UnitFrames(unit)
             i = 0
             uis = PTUnitFrames[unit]
-            len = table.getn(uis)
+            len = uis and table.getn(uis) or 0
             return iterFunc
         end
     end
@@ -338,38 +359,9 @@ function OnAddonLoaded()
                 end
             end
         end)
-    else
-        local roster = AceLibrary("RosterLib-2.0")
-        PuppeteerLib:RegisterEvent("HealComm_Healupdate", function(name)
-            if not PTOptions.UseHealPredictions then
-                return
-            end
-            local unit = roster:GetUnitIDFromName(name)
-            if unit then
-                for ui in UnitFrames(unit) do
-                    ui:UpdateIncomingHealing()
-                end
-            end
-            if UnitName("target") == name then
-                for ui in UnitFrames("target") do
-                    ui:UpdateIncomingHealing()
-                end
-            end
-        end)
-        PuppeteerLib:RegisterEvent("HealComm_Ressupdate", function(name)
-            local unit = roster:GetUnitIDFromName(name)
-            if unit then
-                for ui in UnitFrames(unit) do
-                    ui:UpdateHealth()
-                end
-            end
-            if UnitName("target") == name then
-                for ui in UnitFrames("target") do
-                    ui:UpdateHealth()
-                end
-            end
-        end)
     end
+    -- Phase 2b: HealComm-1.0 + RosterLib-2.0 ripped. Heal prediction on non-SuperWoW
+    -- clients is offline until Phase 3 wires up LibHealComm-4.0.
 
     InitRoleDropdown()
     
@@ -390,15 +382,7 @@ function OnAddonLoaded()
     initUnitFrames()
     StartUnitTracker()
 
-    PuppeteerLib:RegisterEvent("Banzai_UnitGainedAggro", function(unit)
-        if PTGuidRoster then
-            unit = PTGuidRoster.GetUnitGuid(unit)
-        end
-        for ui in UnitFrames(unit) do
-            ui:UpdateOutline()
-        end
-    end)
-	PuppeteerLib:RegisterEvent("Banzai_UnitLostAggro", function(unit)
+    PuppeteerLib:RegisterEvent("UNIT_THREAT_LIST_UPDATE", function(unit)
         if PTGuidRoster then
             unit = PTGuidRoster.GetUnitGuid(unit)
         end
@@ -430,13 +414,7 @@ function OnAddonLoaded()
                     "for you and your raid members! It is highly recommended to install SuperWoW.", 1, 0.4, 0.4))
             end
 
-            if util.IsSuperWowPresent() and not HealComm:IsEventRegistered("UNIT_CASTEVENT") then
-                DEFAULT_CHAT_FRAME:AddMessage(colorize("[Puppeteer] ", 1, 0.4, 0.4)..colorize("WARNING: ", 1, 0.2, 0.2)
-                    ..colorize("You have another addon that uses a HealComm version that is incompatible with SuperWoW! "..
-                    "This will cause wildly inaccurate heal predictions to be shown to your raid members. It is "..
-                    "recommended to either unload the offending addon or copy Puppeteer's HealComm "..
-                    "into the other addon.", 1, 0.4, 0.4))
-            end
+            -- Phase 2b: HealComm-1.0 SuperWoW conflict check removed; replaced by LibHealComm-4.0 in Phase 3.
         end)
     end
 

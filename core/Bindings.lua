@@ -1,6 +1,5 @@
 PTUtil.SetEnvironment(Puppeteer)
 local _G = getfenv(0)
-local compost = AceLibrary("Compost-2.0")
 local util = PTUtil
 local colorize = util.Colorize
 local GetSpellID = util.GetSpellID
@@ -188,7 +187,7 @@ function GetNumLoadoutChanges(origLoadout, modifiedLoadout)
     origLoadout = PruneLoadoutCompost(origLoadout)
     modifiedLoadout = PruneLoadoutCompost(modifiedLoadout)
     local numChanges = 0
-    local alreadyChecked = compost:GetTable()
+    local alreadyChecked = {}
     for targetName, target in pairs(modifiedLoadout.Bindings) do
         for modifierName, modifier in pairs(target) do
             for button, binding in pairs(modifier) do
@@ -215,7 +214,6 @@ function GetNumLoadoutChanges(origLoadout, modifiedLoadout)
     end
     CompostReclaim(origLoadout)
     CompostReclaim(modifiedLoadout)
-    compost:Reclaim(alreadyChecked)
     return numChanges
 end
 
@@ -533,7 +531,8 @@ end
 BindingScriptAPI = {
     EnsureBuffs = function(unit, ...)
         local unitData = PTUnit.Get(unit)
-        for _, buff in ipairs(arg) do
+        local buffs = {...}
+        for _, buff in ipairs(buffs) do
             if not unitData:HasBuff(buff) then
                 if util.IsSuperWowPresent() then
                     CastSpellByName(buff, unit)
@@ -554,10 +553,12 @@ BindingScriptCache = {}
 BindingEnvironment = setmetatable({_G = _G, 
     api = BindingScriptAPI, 
     print = function(...)
-        local str = table.getn(arg) > 0 and tostring(arg[1]) or ""
-        if table.getn(arg) > 1 then
-            for i = 2, table.getn(arg) do
-                str = str..tostring(arg[i])
+        local args = {...}
+        local n = table.getn(args)
+        local str = n > 0 and tostring(args[1]) or ""
+        if n > 1 then
+            for i = 2, n do
+                str = str..tostring(args[i])
             end
         end
         DEFAULT_CHAT_FRAME:AddMessage(str)
@@ -653,50 +654,48 @@ end
 
 function RunBinding_Multi(binding, unit, unitFrame)
     if MultiMenu.Options ~= nil then
-        compost:Reclaim(MultiMenu.Options, 1)
     end
     MultiMenu:SetToggleState(false)
-    local options = compost:GetTable()
+    local options = {}
     local title = binding.Data.Title ~= "" and binding.Data.Title -- or GetBindingTooltipText(binding)
     if title then
         local titleColor = binding.Data.TitleColor or BindTypeTooltipColors[binding.Type]
-        table.insert(options, compost:AcquireHash(
-            "text", colorize(title, titleColor),
-            "isTitle", true,
-            "notCheckable", true,
-            "textHeight", 12
-        ))
+        table.insert(options, {
+            text = colorize(title, titleColor),
+            isTitle = true,
+            notCheckable = true,
+            textHeight = 12
+        })
     end
     local list = binding.Data.Bindings
     for _, subBinding in ipairs(list) do
         local subBinding = subBinding
-        local display = compost:GetTable()
+        local display = {}
         _UpdateBindingDisplay(subBinding, display)
-        table.insert(options, compost:AcquireHash(
-            "text", display.Normal,
-            "notCheckable", true,
-            "keepShownOnClick", true, -- This is used so that dropdowns shown during the func call don't get immediately hidden
-            "func", RunMultiBindingElement,
-            "binding", binding,
-            "subBinding", subBinding,
-            "unit", unit,
-            "unitFrame", unitFrame
-        ))
-        compost:Reclaim(display)
+        table.insert(options, {
+            text = display.Normal,
+            notCheckable = true,
+            keepShownOnClick = true, -- This is used so that dropdowns shown during the func call don't get immediately hidden
+            func = RunMultiBindingElement,
+            binding = binding,
+            subBinding = subBinding,
+            unit = unit,
+            unitFrame = unitFrame
+        })
     end
     if binding.Data.KeepOpen then
-        table.insert(options, compost:AcquireHash(
-            "notCheckable", true,
-            "disabled", true
-        ))
-        table.insert(options, compost:AcquireHash(
-            "text", colorize("Close Menu", NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b),
-            "notCheckable", true,
-            "keepShownOnClick", true,
-            "func", function(self)
+        table.insert(options, {
+            notCheckable = true,
+            disabled = true
+        })
+        table.insert(options, {
+            text = colorize("Close Menu", NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b),
+            notCheckable = true,
+            keepShownOnClick = true,
+            func = function(self)
                 MultiMenu:SetToggleState(false)
             end
-        ))
+        })
     end
     MultiMenu:SetOptions(options)
     local container = unitFrame:GetRootContainer()

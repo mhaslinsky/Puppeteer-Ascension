@@ -100,16 +100,8 @@ local Dewdrop
 
 local _G = getfenv(0)
 
-local table_setn
-do
-	local version = GetBuildInfo()
-	if string.find(version, "^2%.") then
-		-- 2.0.0
-		table_setn = function() end
-	else
-		table_setn = table.setn
-	end
-end
+-- Phase 2a patch: table.setn throws "obsolete" when called on 3.3.5a's Lua 5.1. Always stub.
+local table_setn = function() end
 
 local function print(text, name, r, g, b, frame, delay)
 	if not text or string.len(text) == 0 then

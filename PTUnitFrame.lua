@@ -5,7 +5,6 @@ local _G = getfenv(0)
 local PT = Puppeteer
 local util = PTUtil
 local colorize = util.Colorize
-local compost = AceLibrary("Compost-2.0")
 
 PTUnitFrame.owningGroup = nil
 
@@ -382,8 +381,8 @@ function PTUnitFrame:UpdateIncomingHealing()
         local _, guid = UnitExists(self:GetUnit())
         self:SetIncomingHealing(PTHealPredict.GetIncomingHealing(guid))
     else
-        local name = UnitName(self:GetUnit())
-        self:SetIncomingHealing(Puppeteer.HealComm:getHeal(name))
+        -- Phase 2b: HealComm-1.0 stubbed; LibHealComm-4.0 wires up in Phase 3.
+        self:SetIncomingHealing(0)
     end
 end
 
@@ -985,7 +984,7 @@ function PTUnitFrame:ReleaseAuras()
 
         table.insert(self.auraIconPool, aura)
     end
-    self.auraIcons = compost:Erase(self.auraIcons)
+    util.ClearTable(self.auraIcons)
 end
 
 do
@@ -1047,7 +1046,7 @@ function PTUnitFrame:UpdateAuras()
     
     local trackedBuffs = PuppeteerSettings.TrackedBuffs
 
-    local buffs = compost:GetTable() -- Buffs that are tracked because of matching name
+    local buffs = {} -- Buffs that are tracked because of matching name
     for name, array in pairs(cache.BuffsMap) do
         if trackedBuffs[name] or enemy then
             util.AppendArrayElements(buffs, array)
@@ -1062,8 +1061,8 @@ function PTUnitFrame:UpdateAuras()
     local trackedDebuffs = PuppeteerSettings.TrackedDebuffs
     local trackedDebuffTypes = PuppeteerSettings.TrackedDebuffTypesSet
 
-    local debuffs = compost:GetTable() -- Debuffs that are tracked because of matching name, later combined with typed debuffs
-    local typedDebuffs = compost:GetTable() -- Debuffs that are tracked because it's a tracked type (like "Magic" or "Disease")
+    local debuffs = {} -- Debuffs that are tracked because of matching name, later combined with typed debuffs
+    local typedDebuffs = {} -- Debuffs that are tracked because it's a tracked type (like "Magic" or "Disease")
     for name, array in pairs(cache.DebuffsMap) do
         if trackedDebuffs[name] or enemy then
             util.AppendArrayElements(debuffs, array)
@@ -1111,9 +1110,6 @@ function PTUnitFrame:UpdateAuras()
         self:CreateAura(aura, debuff, xOffset, -yOffset, "Debuff", auraSize)
         xOffset = xOffset - auraSize - spacing
     end
-    compost:Reclaim(buffs)
-    compost:Reclaim(debuffs)
-    compost:Reclaim(typedDebuffs)
     Puppeteer.EndTiming("UFUpdateAuras")
 end
 
@@ -1692,7 +1688,9 @@ function PTUnitFrame:HasAggro()
             return false
         end
     end
-    return Puppeteer.Banzai:GetUnitAggroByUnitId(unit)
+    -- Phase 2b: Banzai ripped. Native UnitThreatSituation returns 0–3 (nil if no threat info).
+    local status = UnitThreatSituation(unit)
+    return status and status > 0
 end
 
 local roleTexturesPath = PTUtil.GetAssetsPath().."textures\\roles\\"

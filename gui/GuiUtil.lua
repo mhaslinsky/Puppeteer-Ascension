@@ -1,7 +1,6 @@
 PTGuiUtil = {}
 PTUtil.SetEnvironment(PTGuiUtil)
 local _G = getfenv(0)
-local compost = AceLibrary("Compost-2.0")
 local util = PTUtil
 local colorize = util.Colorize
 

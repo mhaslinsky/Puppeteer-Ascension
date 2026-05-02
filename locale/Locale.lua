@@ -1,6 +1,5 @@
 PTLocale = {}
 PTUtil.SetEnvironment(PTLocale)
-local compost = AceLibrary("Compost-2.0")
 
 Translations = nil
 
@@ -51,7 +50,7 @@ function Keys(set)
     if not IsUsingTranslations() then
         return
     end
-    local toInsert = compost:GetTable()
+    local toInsert = {}
     for key, value in pairs(set) do
         local translated = Translate(key)
         if translated then
@@ -62,7 +61,6 @@ function Keys(set)
     for key, value in pairs(toInsert) do
         set[key] = value
     end
-    compost:Reclaim(toInsert)
 end
 
 function Values(table)
@@ -78,7 +76,7 @@ function KeysValues(table)
     if not IsUsingTranslations() then
         return
     end
-    local toInsert = compost:GetTable()
+    local toInsert = {}
     for key, value in pairs(table) do
         local translated = Translate(key)
         if translated then
@@ -89,7 +87,6 @@ function KeysValues(table)
     for key, value in pairs(toInsert) do
         table[key] = value
     end
-    compost:Reclaim(toInsert)
 end
 
 function Array(array)

@@ -50,7 +50,7 @@ function PTGuiTabComponent:CreateTab(name, useScrollFrame)
     local tabInfo = {tab = tab, container = container, scrollFrame = scrollFrame, root = scrollFrame or container, name = name}
     table.insert(self.Tabs, tabInfo)
     self:UpdateTabCount()
-    PanelTemplates_TabResize(0, tab)
+    PanelTemplates_TabResize(tab, 0)
     self:PositionTabs()
     return container, scrollFrame
 end

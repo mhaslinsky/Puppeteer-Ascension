@@ -5,7 +5,6 @@ UnitTrackerFrame = CreateFrame("Frame", "PTUnitTrackerFrame", UIParent)
 
 local util = PTUtil
 local GetTime = GetTime
-local compost = AceLibrary("Compost-2.0")
 
 local TRACKING_EVAL_INTERVAL = 1.25
 local RANGE_MIN_DIST = 20
@@ -48,9 +47,9 @@ function RunTrackingScan()
         nextEval = time + TRACKING_EVAL_INTERVAL
 
 
-        compost:Erase(distanceTrackedUnits)
+        util.ClearTable(distanceTrackedUnits)
         local prevSightTrackedUnits = sightTrackedUnits
-        sightTrackedUnits = compost:GetTable()
+        sightTrackedUnits = {}
         if PTGuidRoster then
             for guid, cache in pairs(PTUnit.GetAllUnits()) do
                 EvaluateTracking(guid)
@@ -66,7 +65,6 @@ function RunTrackingScan()
                 ui:UpdateSight()
             end
         end
-        compost:Reclaim(prevSightTrackedUnits)
         --EndTiming("TrackingEval")
     end
 

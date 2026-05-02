@@ -115,15 +115,16 @@ function PTGuiComponent:SetPrimary()
 end
 
 function PTGuiComponent:Import(returnSelf, ...)
-    self:ImportComponent(nil, returnSelf, arg)
+    self:ImportComponent(nil, returnSelf, {...})
 end
 
 function PTGuiComponent:ImportComponent(frameName, returnSelf, ...)
     frameName = frameName or "Frame"
-    for _, import in ipairs(arg) do
+    local args = {...}
+    for _, import in ipairs(args) do
         if type(import) == "table" then
-            for _, import in ipairs(import) do
-                self:DoImport(frameName, returnSelf, import)
+            for _, sub in ipairs(import) do
+                self:DoImport(frameName, returnSelf, sub)
             end
         else
             self:DoImport(frameName, returnSelf, import)

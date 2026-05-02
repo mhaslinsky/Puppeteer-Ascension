@@ -415,7 +415,6 @@ function ApplyTableDiffs(t, overrides)
     end
 end
 
-local compost = AceLibrary("Compost-2.0")
 
 -- Recursively reclaims all tables this table contains
 function CompostReclaim(t)
@@ -424,21 +423,17 @@ function CompostReclaim(t)
             CompostReclaim(v)
         end
     end
-    compost:Reclaim(t)
 end
 
 function CloneTableCompost(t, deep)
-    local clone = compost:GetTable()
-    local n = 0
+    local clone = {}
     for k, v in pairs(t) do
         if deep and type(v) == "table" then
             clone[k] = CloneTableCompost(v, true)
         else
             clone[k] = v
         end
-        n = n + 1
     end
-    table.setn(clone, n)
     return clone
 end
 
@@ -446,7 +441,6 @@ function ClearTable(t)
     for k, v in pairs(t) do
         t[k] = nil
     end
-    table.setn(t, 0)
 end
 
 function GetTableSize(t)
@@ -493,14 +487,13 @@ function TableEquals(t1, t2)
 end
 
 function TraverseTable(v, k1, k2, k3, k4, k5)
-    local keys = compost:Acquire(k1, k2, k3, k4, k5)
+    local keys = {k1, k2, k3, k4, k5}
     for _, k in ipairs(keys) do
         if type(v) ~= "table" then
             return nil, k
         end
         v = v[k]
     end
-    compost:Reclaim(keys)
     return v
 end
 
@@ -763,7 +756,7 @@ end
 
 function GetSpellID(spellname)
     local id = 1
-    local matchingSpells = compost:GetTable()
+    local matchingSpells = {}
     local spellRank = ExtractSpellRank(spellname)
 
     if spellRank ~= nil then
@@ -785,7 +778,6 @@ function GetSpellID(spellname)
         end
     end
     local foundID = matchingSpells[getn(matchingSpells)]
-    compost:Reclaim(matchingSpells)
     return foundID
 end
 
@@ -946,7 +938,7 @@ end
 -- Returns an array of the units in the party number or the unit's raid group
 function GetRaidPartyMembers(partyNumberOrUnit)
     if not RAID_SUBGROUP_LISTS then
-        return compost:GetTable()
+        return {}
     end
     if type(partyNumberOrUnit) == "string" then
         partyNumberOrUnit = FindUnitRaidGroup(partyNumberOrUnit)
@@ -1022,7 +1014,7 @@ function GetSurroundingRaidMembers(player, range, checkPets)
 end
 
 function GetUnitsInRange(center, units, range)
-    local inRange = compost:GetTable()
+    local inRange = {}
     for _, unit in ipairs(units) do
         local exists, guid = UnitExists(unit)
         if exists and UnitIsConnected(unit) and not UnitIsDeadOrGhost(unit) and 
@@ -1044,8 +1036,9 @@ end
 
 local function _FixFrameLevels(parent, ...)
 	local level = parent:GetFrameLevel() + 1
-	for i = 1, getn(arg) do
-		local child = arg[i]
+	local children = {...}
+	for i = 1, getn(children) do
+		local child = children[i]
         -- Children of scroll frames can block components outside if they're layered above the scroll pane
         if parent.GetScrollChild and parent:GetScrollChild() == child then
             child:SetFrameLevel(level - 1)
@@ -1186,8 +1179,8 @@ function SearchSpells(startStr, limit, noNonRank)
     ReverseArray(matchingSpells)
     
     if not noNonRank then
-        local alreadyFound = compost:GetTable()
-        local toInsert = compost:GetTable()
+        local alreadyFound = {}
+        local toInsert = {}
         for i = 1, getn(matchingSpells) do
             local rank = ExtractSpellRank(matchingSpells[i])
             -- Don't add non rank if the user is explicitly typing out the rank already
@@ -1198,7 +1191,7 @@ function SearchSpells(startStr, limit, noNonRank)
                 local baseSpell = string.sub(matchingSpells[i], 1, string.len(matchingSpells[i]) - string.len(rank) - 2)
                 if not alreadyFound[baseSpell] then
                     alreadyFound[baseSpell] = true
-                    table.insert(toInsert, compost:Acquire(i, baseSpell))
+                    table.insert(toInsert, {i, baseSpell})
                 end
             end
         end
@@ -1207,8 +1200,6 @@ function SearchSpells(startStr, limit, noNonRank)
             table.insert(matchingSpells, insertion[1] + offset, insertion[2])
             offset = offset + 1
         end
-        compost:Reclaim(alreadyFound)
-        compost:Reclaim(toInsert, 1)
     end
 
     return matchingSpells
@@ -1233,7 +1224,7 @@ end
 function SearchItems(startStr, limit)
     startStr = string.upper(startStr)
     limit = limit or 20
-    local alreadyFound = compost:GetTable()
+    local alreadyFound = {}
     local matchingItems = {}
     for bag = 0, NUM_BAG_FRAMES do
         for slot = 1, GetContainerNumSlots(bag) do
@@ -1247,7 +1238,6 @@ function SearchItems(startStr, limit)
             end
         end
     end
-    compost:Reclaim(alreadyFound)
     return matchingItems
 end
 

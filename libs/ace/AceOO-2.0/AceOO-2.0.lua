@@ -18,16 +18,8 @@ if not AceLibrary then error(MAJOR_VERSION .. " requires AceLibrary.") end
 if not AceLibrary:IsNewVersion(MAJOR_VERSION, MINOR_VERSION) then return end
 
 if loadstring("return function(...) return ... end") and AceLibrary:HasInstance(MAJOR_VERSION) then return end -- lua51 check
-local table_setn
-do
-	local version = GetBuildInfo()
-	if string.find(version, "^2%.") then
-		-- 2.0.0
-		table_setn = function() end
-	else
-		table_setn = table.setn
-	end
-end
+-- Phase 2a patch: table.setn throws "obsolete" when called on 3.3.5a's Lua 5.1. Always stub.
+local table_setn = function() end
 
 local AceOO = {
 	error = AceLibrary.error,

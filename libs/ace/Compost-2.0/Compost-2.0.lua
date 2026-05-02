@@ -17,16 +17,8 @@ if not AceLibrary:IsNewVersion(vmajor, vminor) then return end
 
 local lib = {}
 
-local table_setn
-do
-	local version = GetBuildInfo()
-	if string.find(version, "^2%.") then
-		-- 2.0.0
-		table_setn = function() end
-	else
-		table_setn = table.setn
-	end
-end
+-- Phase 2a patch: table.setn throws "obsolete" when called on 3.3.5a's Lua 5.1. Always stub.
+local table_setn = function() end
 
 -- Activate a new instance of this library
 local function activate(self, oldLib, oldDeactivate)

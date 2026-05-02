@@ -19,7 +19,6 @@
 
 PTGuiDropdown = PTGuiComponent:Extend("dropdown")
 local _G = getfenv(0)
-local compost = AceLibrary("Compost-2.0")
 
 PTGuiDropdown.Options = nil
 
@@ -121,7 +120,7 @@ function PTGuiDropdown:SetShowShadow(showShadow)
         part:SetPoint(unpack(props.Point))
     end
     self:SetWidth(self:GetWidth())
-    UIDropDownMenu_SetAnchor(showShadow and 18 or 0, showShadow and 17 or 0, self:GetHandle(), "TOPLEFT", 
+    UIDropDownMenu_SetAnchor(self:GetHandle(), showShadow and 18 or 0, showShadow and 17 or 0, "TOPLEFT",
         _G[frameName.."Left"], "BOTTOMLEFT")
     return self
 end
@@ -160,7 +159,6 @@ function PTGuiDropdown:OnDispose()
 
     self.Options = nil
     if self.DynamicOptions then
-        compost:Reclaim(self.DynamicOptions, 1)
         self.DynamicOptionsArgs = nil
     end
     self.TextUpdater = nil
@@ -168,8 +166,15 @@ function PTGuiDropdown:OnDispose()
 end
 
 local dynamicOptions
-local function addDynamicOption(k1,v1,k2,v2,k3,v3,k4,v4,k5,v5,k6,v6,k7,v7,k8,v8,k9,v9,k10,v10)
-    local option = compost:AcquireHash(k1,v1,k2,v2,k3,v3,k4,v4,k5,v5,k6,v6,k7,v7,k8,v8,k9,v9,k10,v10)
+local function addDynamicOption(...)
+    local option = {}
+    local n = select("#", ...)
+    for i = 1, n, 2 do
+        local k, v = select(i, ...)
+        if k ~= nil then
+            option[k] = v
+        end
+    end
     table.insert(dynamicOptions, option)
 end
 
@@ -181,16 +186,18 @@ function PTGuiDropdown:Initialize(level)
     local options = self.Options
     if type(options) == "function" then
         if self.DynamicOptions then
-            compost:Reclaim(self.DynamicOptions, 1)
         end
-        self.DynamicOptions = compost:GetTable()
+        self.DynamicOptions = {}
         dynamicOptions = self.DynamicOptions
         options(addDynamicOption, level, self.DynamicOptionsArgs)
         options = dynamicOptions
         self:BakeOptions(options)
     end
     local value = UIDROPDOWNMENU_MENU_VALUE
-    options = level == 1 and options or value.children
+    if level ~= 1 then
+        if not (value and value.children) then return end
+        options = value.children
+    end
     for _, option in ipairs(options) do
         if option.initFunc then
             option:initFunc(self)
@@ -282,7 +289,7 @@ function PTGuiDropdown:UpdateText()
 end
 
 function PTGuiDropdown:SetText(text)
-    UIDropDownMenu_SetText(text, self:GetHandle())
+    UIDropDownMenu_SetText(self:GetHandle(), text)
     return self
 end
 

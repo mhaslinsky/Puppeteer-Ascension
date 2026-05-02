@@ -11,7 +11,6 @@ local _G = getfenv(0)
 setmetatable(PTUnitProxy, {__index = getfenv(1)})
 setfenv(1, PTUnitProxy)
 
-local compost = AceLibrary("Compost-2.0")
 
 -- Unit data
 
@@ -76,7 +75,7 @@ UnitFunctions = {}
 
 
 function UpdateUnitTypeFrames(unitType)
-    local groups = compost:GetTable()
+    local groups = {}
     for _, unit in ipairs(CustomUnitsMap[unitType]) do
         local guid = CustomUnitGUIDMap[unit]
         for ui in Puppeteer.UnitFrames(unit) do
@@ -96,11 +95,10 @@ function UpdateUnitTypeFrames(unitType)
     for group, _ in pairs(groups) do
         group:EvaluateShown()
     end
-    compost:Reclaim(groups)
 end
 
 function UpdateUnitFrames(unit)
-    local groups = compost:GetTable()
+    local groups = {}
     local guid = CustomUnitGUIDMap[unit]
     for ui in Puppeteer.UnitFrames(unit) do
         if guid then
@@ -117,7 +115,6 @@ function UpdateUnitFrames(unit)
     for group, _ in pairs(groups) do
         group:EvaluateShown()
     end
-    compost:Reclaim(groups)
 end
 
 function GetCurrentUnitOfType(guid, unitType)
@@ -144,7 +141,7 @@ function SetCustomUnitGuid(unit, guid, skipUpdate)
         CustomUnitGUIDMap[unit] = guid
         local unitArray = GUIDCustomUnitMap[guid]
         if not unitArray then
-            unitArray = compost:GetTable()
+            unitArray = {}
             GUIDCustomUnitMap[guid] = unitArray
         end
         table.insert(unitArray, unit)
@@ -160,7 +157,6 @@ function SetCustomUnitGuid(unit, guid, skipUpdate)
             CustomUnitGUIDMap[unit] = nil
             local unitArray = GUIDCustomUnitMap[guid]
             if table.getn(unitArray) == 1 then
-                compost:Reclaim(unitArray)
                 GUIDCustomUnitMap[guid] = nil
             else
                 PTUtil.RemoveElement(unitArray, unit)
@@ -218,7 +214,7 @@ function PromoteGuidUnitType(guid, unitType)
 
     SetCustomUnitGuid(unit, nil)
     -- Remove all units before this unit
-    local reacquire = compost:GetTable()
+    local reacquire = {}
     for i = 1, index do
         local moveUnit = units[i]
         if CustomUnitGUIDMap[moveUnit] then
@@ -233,7 +229,6 @@ function PromoteGuidUnitType(guid, unitType)
     for _, reacquireGuid in ipairs(reacquire) do
         SetGuidUnitType(reacquireGuid, unitType, true)
     end
-    compost:Reclaim(reacquire)
     UpdateUnitTypeFrames(unitType)
 end
 

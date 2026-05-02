@@ -2,7 +2,6 @@ PTSettingsGui = {}
 PTUtil.SetEnvironment(PTSettingsGui, PuppeteerSettings)
 local util = PTUtil
 local colorize = util.Colorize
-local compost = AceLibrary("Compost-2.0")
 local GetOption = PuppeteerSettings.GetOption
 local SetOption = PuppeteerSettings.SetOption
 
