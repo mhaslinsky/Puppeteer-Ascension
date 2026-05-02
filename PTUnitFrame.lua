@@ -771,17 +771,17 @@ local AURA_DURATION_TEXT_FLASH_THRESHOLD = 5
 local AURA_DURATION_TEXT_LOW_THRESHOLD = 30
 -- A map of all seconds below the flash threshold to an array of colors to interpolate
 local durationTextFlashColorsRange
-if util.IsSuperWowPresent() then
+do
     local flashColorsReset = {{1, 1, 0.75}, {1, 0.7, 0.55}, {1, 0.6, 0.6}}
     local flashColors = {{1, 1, 0.25}, {1, 0.6, 0.35}, {1, 0.4, 0.4}}
 
     local textFlashColors = {}
     for i = 0, AURA_DURATION_TEXT_FLASH_THRESHOLD + 1 do
         textFlashColors[i] = {}
-        textFlashColors[i][1] = util.InterpolateColors(flashColors, 
+        textFlashColors[i][1] = util.InterpolateColors(flashColors,
             (AURA_DURATION_TEXT_FLASH_THRESHOLD - i) / AURA_DURATION_TEXT_FLASH_THRESHOLD)
-        textFlashColors[i][2] = util.InterpolateColors(flashColorsReset, 
-        (AURA_DURATION_TEXT_FLASH_THRESHOLD - i) / AURA_DURATION_TEXT_FLASH_THRESHOLD)
+        textFlashColors[i][2] = util.InterpolateColors(flashColorsReset,
+            (AURA_DURATION_TEXT_FLASH_THRESHOLD - i) / AURA_DURATION_TEXT_FLASH_THRESHOLD)
     end
     durationTextFlashColorsRange = {}
     for seconds, colors in pairs(textFlashColors) do
@@ -801,72 +801,68 @@ function PTUnitFrame:AllocateAura()
     local stackText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     stackText:SetTextColor(1, 1, 1)
 
-    -- Duration display, only used when SuperWoW is present
-    if util.IsSuperWowPresent() then
-        local duration = CreateFrame("Model", nil, frame, "CooldownFrameTemplate")
-        duration.noCooldownCount = true
-        duration:SetAlpha(0.8)
-        local durationOverlayFrame = CreateFrame("Frame", nil, frame)
-        durationOverlayFrame:SetFrameLevel(durationOverlayFrame:GetFrameLevel() + 1)
-        local durationText = durationOverlayFrame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-        durationText:SetPoint("BOTTOMLEFT", durationOverlayFrame, "BOTTOMLEFT", 0, 0)
-        durationText.SetSeconds = function(self, seconds)
-            self.seconds = seconds
-            if seconds == nil then
-                self:SetText("")
-                return
-            end
-            self:SetText(seconds <= 60 and seconds or math.ceil(seconds / 60).."m")
-            self:SetFont("Fonts\\FRIZQT__.TTF", math.ceil(frame:GetHeight() * 
-                (seconds < 540 and (seconds < 10 and 0.6 or 0.45) or 0.35)), "OUTLINE")
+    -- Phase 3: native 3.3.5a Cooldown frame for the sweep animation. Replaces a SuperWoW-only
+    -- Model+CooldownFrameTemplate hack that emulated the sweep via OnUpdateModel.
+    local duration = CreateFrame("Cooldown", nil, frame, "CooldownFrameTemplate")
+    duration.noCooldownCount = true -- Suppress OmniCC overlay; we draw our own seconds text
+    duration:SetAlpha(0.8)
+
+    local durationOverlayFrame = CreateFrame("Frame", nil, frame)
+    durationOverlayFrame:SetFrameLevel(durationOverlayFrame:GetFrameLevel() + 1)
+    local durationText = durationOverlayFrame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    durationText:SetPoint("BOTTOMLEFT", durationOverlayFrame, "BOTTOMLEFT", 0, 0)
+    durationText.SetSeconds = function(self, seconds)
+        self.seconds = seconds
+        if seconds == nil then
+            self:SetText("")
+            return
         end
-        duration.UpdateText = function()
-            local seconds = duration.seconds
-            local secondsPrecise = duration.secondsPrecise
-            durationText:SetSeconds(seconds)
-            if seconds <= AURA_DURATION_TEXT_FLASH_THRESHOLD then
-                durationText:SetTextColor(
-                    util.InterpolateColorsNoTable(durationTextFlashColorsRange[seconds], 
-                    secondsPrecise - seconds))
-            elseif seconds <= AURA_DURATION_TEXT_LOW_THRESHOLD then
-                durationText:SetTextColor(1, 1, 0.25)
-            else
-                durationText:SetTextColor(1, 1, 1)
-            end
-            duration:SetScript("OnUpdate", nil)
-        end
-        local SetSequenceTime = duration.SetSequenceTime
-        local GetTime = GetTime
-        duration:SetScript("OnUpdateModel", function()
-            if duration.stopping == 0 then
-                duration:SetAlpha(0.8)
-                local time = GetTime()
-                local progress = (time - duration.start) / duration.duration
-                if progress < 1.0 then
-                    SetSequenceTime(duration, 0, 1000 - (progress * 1000))
-                    local secondsPrecise = duration.start - time + duration.duration
-                    local seconds = math.floor(secondsPrecise)
-                    if seconds <= (duration.displayAt or AURA_DURATION_TEXT_FLASH_THRESHOLD) then
-                        if durationText.seconds ~= seconds or seconds <= AURA_DURATION_TEXT_FLASH_THRESHOLD then
-                            -- You don't want to know why it's gotta be done like this..
-                            -- (If you're insane and you do, it's because otherwise the text will disappear for one frame otherwise)
-                            duration.seconds = seconds
-                            duration.secondsPrecise = secondsPrecise
-                            duration:SetScript("OnUpdate", duration.UpdateText)
-                        end
-                    elseif durationText.seconds ~= nil then
-                        durationText:SetSeconds(nil)
-                    end
-                    return
-                end
-                durationText:SetSeconds(nil)
-                SetSequenceTime(duration, 0, 0)
-            end
-        end)
-        return {["frame"] = frame, ["icon"] = icon, ["border"] = border, ["stackText"] = stackText, ["overlay"] = durationOverlayFrame, 
-            ["durationText"] = durationText, ["duration"] = duration}
+        self:SetText(seconds <= 60 and seconds or math.ceil(seconds / 60).."m")
+        self:SetFont("Fonts\\FRIZQT__.TTF", math.ceil(frame:GetHeight() *
+            (seconds < 540 and (seconds < 10 and 0.6 or 0.45) or 0.35)), "OUTLINE")
     end
-    return {["frame"] = frame, ["icon"] = icon, ["border"] = border, ["stackText"] = stackText}
+
+    -- Stash start/duration so OnUpdate can compute remaining seconds (3.3.5a Cooldown
+    -- has no public getters for these). CooldownFrame_SetTimer dispatches to SetCooldown.
+    local origSetCooldown = duration.SetCooldown
+    duration.SetCooldown = function(self, start, dur)
+        self.startTime = start
+        self.totalDuration = dur
+        origSetCooldown(self, start, dur)
+    end
+
+    duration:SetScript("OnUpdate", function()
+        local start = duration.startTime
+        local total = duration.totalDuration
+        if not start or not total or total <= 0 then return end
+        local time = GetTime()
+        local secondsPrecise = start - time + total
+        local seconds = math.floor(secondsPrecise)
+        if seconds < 0 then
+            if durationText.seconds ~= nil then
+                durationText:SetSeconds(nil)
+            end
+            return
+        end
+        if seconds <= (duration.displayAt or AURA_DURATION_TEXT_FLASH_THRESHOLD) then
+            if durationText.seconds ~= seconds or seconds <= AURA_DURATION_TEXT_FLASH_THRESHOLD then
+                durationText:SetSeconds(seconds)
+                if seconds <= AURA_DURATION_TEXT_FLASH_THRESHOLD then
+                    durationText:SetTextColor(util.InterpolateColorsNoTable(
+                        durationTextFlashColorsRange[seconds], secondsPrecise - seconds))
+                elseif seconds <= AURA_DURATION_TEXT_LOW_THRESHOLD then
+                    durationText:SetTextColor(1, 1, 0.25)
+                else
+                    durationText:SetTextColor(1, 1, 1)
+                end
+            end
+        elseif durationText.seconds ~= nil then
+            durationText:SetSeconds(nil)
+        end
+    end)
+
+    return {["frame"] = frame, ["icon"] = icon, ["border"] = border, ["stackText"] = stackText,
+        ["overlay"] = durationOverlayFrame, ["durationText"] = durationText, ["duration"] = duration}
 end
 
 -- Get an icon from the available pool. Automatically inserts into the used pool.
@@ -977,10 +973,8 @@ function PTUnitFrame:ReleaseAuras()
             table.insert(self.auraButtonPool, button)
         end
 
-        if util.IsSuperWowPresent() then
-            aura.durationText:SetSeconds(nil)
-            CooldownFrame_SetTimer(aura.duration, 0, 0, 0)
-        end
+        aura.durationText:SetSeconds(nil)
+        aura.duration:Hide()
 
         table.insert(self.auraIconPool, aura)
     end
@@ -1203,14 +1197,12 @@ function PTUnitFrame:CreateAura(component, aura, xOffset, yOffset, type, size)
     local button = component.button
     button:SetAllPoints(frame)
 
-    if util.IsSuperWowPresent() then
-        local overlay = component.overlay
-        overlay:SetAllPoints()
+    local overlay = component.overlay
+    overlay:SetAllPoints()
 
-        local duration = component.duration
-        duration:SetAllPoints()
-        duration:SetScale(size * 0.0275)
-    end
+    local duration = component.duration
+    duration:SetAllPoints()
+    duration:SetScale(size * 0.0275)
     
     if stacks > 1 then
         local stackText = component.stackText
@@ -1238,7 +1230,7 @@ function PTUnitFrame:CreateAura(component, aura, xOffset, yOffset, type, size)
         end
     end
 
-    if aura.time and component.duration then
+    if aura.time then
         local startTime = aura.time.startTime
         local endTime = aura.time.endTime
         local duration = aura.time.duration
@@ -1255,9 +1247,8 @@ function PTUnitFrame:CreateAura(component, aura, xOffset, yOffset, type, size)
                 durationUI.displayAt = PTOptions.ShowAuraTimesAt.Long
             end
 
-            -- To prevent having a frame where the duration is not updated
+            -- Reset any stale text; OnUpdate will populate within one frame.
             component.durationText:SetSeconds(nil)
-            util.CallWithThis(durationUI, durationUI:GetScript("OnUpdateModel"))
         end
     end
 end
