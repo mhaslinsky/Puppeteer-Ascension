@@ -1,3 +1,32 @@
+# Puppeteer-Ascension
+
+> **Fork of [OldManAlpha/Puppeteer](https://github.com/OldManAlpha/Puppeteer) — port to WotLK 3.3.5a (Project Ascension).**
+>
+> This is an **in-progress port**. The upstream addon targets Vanilla 1.12 and depends on Vanilla-only client mods (SuperWoW, UnitXP SP3, Nampower) for many of its features. This fork rewrites those subsystems against native 3.3.5a APIs (`UnitAura`, `UnitThreatSituation`, `Cooldown` frames, `COMBAT_LOG_EVENT_UNFILTERED`) so the addon runs on standard WotLK clients with no external mods.
+>
+> ### Current port status
+>
+> | Phase | Status | What landed |
+> |---|---|---|
+> | 0 — toc bump | ✅ | `Interface: 11200 → 30300` |
+> | 0.5 — secure-template spike | ✅ | Secure click-cast architecture proven via throwaway addon (`SecureSpike`) |
+> | 2a — Lua 5.0→5.1 + 1.12→Wrath sweep | ✅ | `table.setn` obsolete cascade fixed; implicit `arg` table → `{...}`; UIDropDownMenu / PanelTemplates signature flips; ScrollFrame `this`-global → `(self,...)` |
+> | 2b — Ace2 framework rip | ✅ | All Ace2 libs removed (AceLibrary/Locale/OO/Debug/Addon/Console/Event/Hook, Compost, Gratuity, RosterLib, Deformat, ItemBonusLib, Banzai, HealComm-1.0). Only LibStub remains. PuppeteerLib replaced with frame-based dispatcher; aggro via native `UnitThreatSituation` |
+> | 3 — combat-log + auras + heal prediction | 🟡 partial | `UnitAura` migration (durations native); `AuraTracker.lua` retired; native 3.3.5a `Cooldown` frame integration. Still pending: combat-log (CLEU) consumer, LibHealComm-4.0 heal-prediction wire-up, CastIcon/SpellLine sweep |
+> | 4 — roster / threat / GUID consolidation | ⏳ | |
+> | 5 — secure click-cast integration | ⏳ | Architecture proven (Phase 0.5); integration not started — click-cast currently blocked by 3.3.5a's protected-frame system |
+> | 6 — Ascension classless / Mystic specifics | ⏳ | |
+> | 7 — cleanup, docs, distribution | ⏳ | |
+>
+> ### Known limitations during port
+> - **Click-to-cast is blocked** until Phase 5 ships secure-template integration. Frames render and aggro detection works, but clicking a unit frame to cast a spell triggers WoW's "Interface action failed because of an AddOn" popup.
+> - **Heal prediction is offline** until Phase 3 wires up LibHealComm-4.0. The HealComm-1.0 dependency was removed in Phase 2b without a replacement.
+> - **Multi-focus is feature-cut** for v2.0. Native 3.3.5a `focus` is single-slot; a multi-focus equivalent would require separate macro-by-name workarounds with limitations.
+>
+> Original Vanilla 1.12 README follows below. Anything in it that depends on SuperWoW / UnitXP SP3 / Nampower / VanillaUtils is being progressively replaced with native 3.3.5a equivalents and may behave differently in this fork.
+
+---
+
 # Puppeteer
 
 <img align="right" width="40%" src="https://i.imgur.com/hKjSAd5.jpeg">
