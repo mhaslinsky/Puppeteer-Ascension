@@ -60,18 +60,21 @@ PTLocale.Keys(TRACKED_HOTS)
 
 function OnLoad()
     print = Puppeteer.print
-    if not PTHealCache then
-        setglobal("PTHealCache", {})
+    -- _G.X = {} (not setglobal, which writes to the env-table on Lua 5.0/5.1).
+    -- WoW's SavedVariables system serializes _G[name]; the env-table entry is
+    -- invisible to it, so setglobal silently dropped every learned value at logout.
+    if not _G.PTHealCache then
+        _G.PTHealCache = {}
     end
-    HealCache = PTHealCache
+    HealCache = _G.PTHealCache
 
-    if not PTPlayerHealCache then
-        setglobal("PTPlayerHealCache", {})
+    if not _G.PTPlayerHealCache then
+        _G.PTPlayerHealCache = {}
     end
-    if not PTPlayerHealCache[GetRealmName()] then
-        PTPlayerHealCache[GetRealmName()] = {}
+    if not _G.PTPlayerHealCache[GetRealmName()] then
+        _G.PTPlayerHealCache[GetRealmName()] = {}
     end
-    PlayerHealCache = PTPlayerHealCache[GetRealmName()]
+    PlayerHealCache = _G.PTPlayerHealCache[GetRealmName()]
 end
 
 -- Get the expected heal of a player's spell
