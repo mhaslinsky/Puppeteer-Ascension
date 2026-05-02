@@ -709,9 +709,11 @@ function CheckGroup()
         end
     end
     local superwow = util.IsSuperWowPresent()
-    if superwow then
+    if GuidRoster then
         GuidRoster.ResetRoster()
         GuidRoster.PopulateRoster()
+    end
+    if superwow then
         PTUnit.UpdateGuidCaches()
     end
     for _, unit in ipairs(util.AllRealUnits) do

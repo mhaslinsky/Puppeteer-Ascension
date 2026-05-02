@@ -1,8 +1,12 @@
--- A utility to map guids to units
-
-if not PTUtil.IsSuperWowPresent() then
-    return
-end
+-- A utility to map GUIDs to unit tokens.
+--
+-- SuperWoW's "custom units" (focus2..N) live in PTUnitProxy and remain
+-- SuperWoW-only; GuidRoster does NOT track them — ResolveUnitGuid falls back
+-- to PTUnitProxy when present.
+--
+-- This file owns no event registrations: callers drive
+-- ResetRoster/PopulateRoster/SetUnitGuid (CheckGroup on group changes,
+-- the PLAYER_TARGET_CHANGED handler).
 
 PTGuidRoster = {}
 PTUtil.SetEnvironment(PTGuidRoster)
@@ -16,21 +20,23 @@ GuidFrameMap = {}
 
 function ResetRoster()
     local roster = GuidUnitMap
-    for k, v in pairs(roster) do
+    for k in pairs(roster) do
         roster[k] = nil
     end
 end
 
 function PopulateRoster()
     for _, unit in ipairs(util.AllRealUnits) do
-        local exists, guid = UnitExists(unit)
-        if exists then
+        local guid = UnitGUID(unit)
+        if guid then
             AddUnit(guid, unit)
         end
     end
-    for guid, units in pairs(PTUnitProxy.GUIDCustomUnitMap) do
-        for _, unit in ipairs(units) do
-            AddUnit(guid, unit)
+    if PTUnitProxy and PTUnitProxy.GUIDCustomUnitMap then
+        for guid, units in pairs(PTUnitProxy.GUIDCustomUnitMap) do
+            for _, unit in ipairs(units) do
+                AddUnit(guid, unit)
+            end
         end
     end
 end
@@ -64,20 +70,21 @@ function SetUnitGuid(unit, guid)
 end
 
 function GetUnitGuid(unit)
-    local _, guid = UnitExists(unit)
-    return guid
+    if not unit or unit == "" then return nil end
+    return UnitGUID(unit)
 end
 
--- Resolves the GUID of the real unit, custom unit, or returns the unit itself if it's already a GUID.
--- If the unit is "target" and there's no target, this returns nil.
+-- Resolves the GUID of a unit token, custom unit, or returns the input if it
+-- already looks like a GUID (SuperWoW-era callers pass GUIDs as units).
 function ResolveUnitGuid(unit)
-    local guid = GetUnitGuid(unit) or PTUnitProxy.CustomUnitGUIDMap[unit] or unit
+    local guid = UnitGUID(unit)
+        or (PTUnitProxy and PTUnitProxy.CustomUnitGUIDMap and PTUnitProxy.CustomUnitGUIDMap[unit])
+        or unit
     if guid ~= "target" then
         return guid
     end
 end
 
--- Returns an array of all the units the guid is, or nil if none
 function GetUnits(guid)
     return GuidUnitMap[guid]
 end
@@ -86,12 +93,10 @@ function HasUnits(guid)
     return GuidUnitMap[guid] ~= nil
 end
 
--- Returns an array of units this unit is
 function GetAllUnits(unit)
-    return GetUnits(GetUnitGuid(unit))
+    return GetUnits(UnitGUID(unit))
 end
 
--- Returns an array of all guids that have units
 function GetTrackedGuids()
     return util.ToArray(GuidUnitMap)
 end
