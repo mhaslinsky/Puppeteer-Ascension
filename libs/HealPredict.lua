@@ -228,8 +228,11 @@ function UpdateCache(heal, name, spellID, targetGuid)
     local lastCastedSpell = LastCastedSpells[name]
     LastCastedSpells[name] = nil
 
+    DEFAULT_CHAT_FRAME:AddMessage("[PT] UpdateCache heal="..tostring(heal).." name="..tostring(name).." spell="..tostring(spellID).." tgt="..tostring(targetGuid))
+
     spellID = spellID or (lastCastedSpell and lastCastedSpell["spellID"])
     if not spellID then
+        DEFAULT_CHAT_FRAME:AddMessage("[PT]  bail: no spellID")
         return
     end
 
@@ -237,6 +240,7 @@ function UpdateCache(heal, name, spellID, targetGuid)
 
     if not PRAYER_OF_HEALING_NAMES[spellID] then
         if not targetGuid or targetGuid == "" then
+            DEFAULT_CHAT_FRAME:AddMessage("[PT]  bail: no target")
             return
         end
         -- PTUnit.Cached is keyed by unit-id on non-SuperWoW (CreateCaches), by GUID
@@ -249,11 +253,14 @@ function UpdateCache(heal, name, spellID, targetGuid)
                 lookupUnit = units[1]
             end
         end
+        DEFAULT_CHAT_FRAME:AddMessage("[PT]  lookupUnit="..tostring(lookupUnit))
         local cache = PTUnit.Get(lookupUnit)
         if not cache or cache == PTUnit then
+            DEFAULT_CHAT_FRAME:AddMessage("[PT]  bail: no PTUnit cache for "..tostring(lookupUnit))
             return
         end
         if cache.HasHealingModifier then
+            DEFAULT_CHAT_FRAME:AddMessage("[PT]  bail: HasHealingModifier")
             return
         end
     end
@@ -658,7 +665,11 @@ combatLogFrame:SetScript("OnEvent", function()
         local destGUID = arg6
         local spellName = arg10
         local amount = arg12
-        if not sourceName or not spellName or not amount or amount <= 0 then return end
+        DEFAULT_CHAT_FRAME:AddMessage("[PT] CLEU SPELL_HEAL src="..tostring(sourceName).." dst="..tostring(destGUID).." spell="..tostring(spellName).." amt="..tostring(amount))
+        if not sourceName or not spellName or not amount or amount <= 0 then
+            DEFAULT_CHAT_FRAME:AddMessage("[PT]  bail: missing arg or amt<=0")
+            return
+        end
         UpdateCache(amount, sourceName, spellName, destGUID)
 
     elseif subevent == "SPELL_PERIODIC_HEAL" then
