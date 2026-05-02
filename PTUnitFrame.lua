@@ -378,10 +378,9 @@ end
 
 function PTUnitFrame:UpdateIncomingHealing()
     if PTHealPredict then
-        local _, guid = UnitExists(self:GetUnit())
+        local guid = UnitGUID(self:GetUnit())
         self:SetIncomingHealing(PTHealPredict.GetIncomingHealing(guid))
     else
-        -- Phase 2b: HealComm-1.0 stubbed; LibHealComm-4.0 wires up in Phase 3.
         self:SetIncomingHealing(0)
     end
 end

@@ -227,14 +227,16 @@ end
 PTGuiLib.RegisterComponent(PTCastIcon)
 
 local f = CreateFrame("Frame", "PTPushbackTracker")
-f:RegisterEvent("SPELL_DELAYED_SELF")
-f:RegisterEvent("SPELL_DELAYED_OTHER")
+f:RegisterEvent("UNIT_SPELLCAST_DELAYED")
 f:SetScript("OnEvent", function()
-    local caster, pushback = arg1, (arg2 / 1000)
-    if activeIcons[caster] then
-        Puppeteer.print("Pushback: "..pushback)
-        local icon = activeIcons[caster]
-        icon.startTime = icon.startTime + pushback
-        icon.endTime = icon.endTime + pushback
-    end
+    local unit = arg1
+    if unit ~= "player" then return end -- self-only icons; non-self casts not tracked on 3.3.5a
+    local casterGuid = UnitGUID(unit)
+    if not casterGuid or not activeIcons[casterGuid] then return end
+    local _, _, _, _, startTimeMs, endTimeMs = UnitCastingInfo(unit)
+    if not endTimeMs then return end
+    local icon = activeIcons[casterGuid]
+    icon.startTime = startTimeMs / 1000
+    icon.endTime = endTimeMs / 1000
+    icon.time = (endTimeMs - startTimeMs) / 1000
 end)

@@ -10,6 +10,8 @@ Puppeteer is a World of Warcraft **Vanilla 1.12** unit-frames addon (formerly He
 
 **Active port in progress**: this addon is mid-port from Vanilla 1.12 → 3.3.5a Project Ascension. Read `.research/SESSION-STATE.md` first for current status, then `.research/PORT-PLAN.md` for the full plan. The four `pass1..pass4.md` reports under `.research/` are background research; only re-read if a specific finding is in question. Spike addons in `.research/spike/SecureSpike/` and `MysticSpike/` are the reference implementations of the secure-template and classless-detection patterns and **must not be deleted** until Phase 5 / Phase 6 integration ships.
 
+**PR target**: PRs always go to `mhaslinsky/Puppeteer-Ascension` (the fork, `origin`), NEVER to `OldManAlpha/Puppeteer` (upstream). When using `gh pr create`, always pass `--repo mhaslinsky/Puppeteer-Ascension` AND verify the returned URL points at `mhaslinsky/Puppeteer-Ascension/pull/N` before reporting success — `gh` has been observed creating a PR on upstream even with `--repo` set. After creating, run `gh pr list --repo OldManAlpha/Puppeteer --state open --author @me` to confirm no stray PR was opened on upstream; if one exists, close it immediately.
+
 SavedVariables: `PTGlobalOptions`, `PTHealCache`, `PTPlayerHealCache`, `PTRoleCache` (account-wide); `PTBindings`, `PTOptions` (per-character). Changing the shape of any of these requires either a migration in the load path or a `## Version` bump with reset logic — old saved data will be deserialized into the new code.
 
 ## Big-picture architecture
