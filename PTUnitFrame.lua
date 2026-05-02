@@ -1003,10 +1003,13 @@ local enemyDebuffSorter = function(a, b)
     if not a.time and not b.time then
         return a.name > b.name
     end
-    if UnitIsUnit(a.time.owner, "player") and not UnitIsUnit(b.time.owner, "player") then
+    -- aura.time.owner can be nil when the caster is unknown (e.g. boss debuffs cast from outside the group)
+    local aMine = a.time.owner and UnitIsUnit(a.time.owner, "player")
+    local bMine = b.time.owner and UnitIsUnit(b.time.owner, "player")
+    if aMine and not bMine then
         return true
     end
-    if not UnitIsUnit(a.time.owner, "player") and UnitIsUnit(b.time.owner, "player") then
+    if not aMine and bMine then
         return false
     end
     return (a.time.startTime + a.time.duration) < (b.time.startTime + b.time.duration)
@@ -1210,8 +1213,10 @@ function PTUnitFrame:CreateAura(component, aura, xOffset, yOffset, type, size)
         stackText:SetText(stacks)
     end
 
+    -- aura.time.owner can be nil when the caster is unknown
+    local mine = aura.time and aura.time.owner and UnitIsUnit(aura.time.owner, "player")
     if type == "Buff" then
-        if selfBorderedBuffs[aura.name] and aura.time and UnitIsUnit(aura.time.owner, "player") then
+        if selfBorderedBuffs[aura.name] and mine then
             local border = component.border
             border:Show()
             border:SetVertexColor(1, 1, 0)
@@ -1222,7 +1227,7 @@ function PTUnitFrame:CreateAura(component, aura, xOffset, yOffset, type, size)
         local border = component.border
         border:Show()
         local color = debuffTypeBorderColors[aura.type] or debuffTypeBorderColors["Other"]
-        if aura.time and UnitIsUnit(aura.time.owner, "player") and self:IsEnemy() then
+        if mine and self:IsEnemy() then
             border:SetVertexColor(1, 1, 0)
         else
             border:SetVertexColor(color[1], color[2], color[3])

@@ -47,18 +47,21 @@ PTLocale.Keys(TRACKED_HOTS)
 
 function OnLoad()
     print = Puppeteer.print
-    if not PTHealCache then
-        setglobal("PTHealCache", {})
+    -- _G.X = {} (not setglobal, which writes to the env-table on Lua 5.0/5.1).
+    -- WoW's SavedVariables system serializes _G[name]; the env-table entry is
+    -- invisible to it, so setglobal silently dropped every learned value at logout.
+    if not _G.PTHealCache then
+        _G.PTHealCache = {}
     end
-    HealCache = PTHealCache
+    HealCache = _G.PTHealCache
 
-    if not PTPlayerHealCache then
-        setglobal("PTPlayerHealCache", {})
+    if not _G.PTPlayerHealCache then
+        _G.PTPlayerHealCache = {}
     end
-    if not PTPlayerHealCache[GetRealmName()] then
-        PTPlayerHealCache[GetRealmName()] = {}
+    if not _G.PTPlayerHealCache[GetRealmName()] then
+        _G.PTPlayerHealCache[GetRealmName()] = {}
     end
-    PlayerHealCache = PTPlayerHealCache[GetRealmName()]
+    PlayerHealCache = _G.PTPlayerHealCache[GetRealmName()]
 end
 
 -- Get the expected heal of a player's spell
@@ -220,29 +223,40 @@ end
 
 local GENERIC_CHANGE_FACTOR = 0.05
 local PLAYER_CHANGE_FACTOR = 0.25
-function UpdateCache(heal, name)
+-- spellID and targetGuid are CLEU-supplied when available; fall back to LastCastedSpells
+-- for the legacy chat-log path or when CLEU's SPELL_HEAL wins the dispatch race against
+-- UNIT_SPELLCAST_SUCCEEDED (LastCastedSpells is set in the SUCCEEDED handler).
+function UpdateCache(heal, name, spellID, targetGuid)
     name = name or UnitName("player")
     local lastCastedSpell = LastCastedSpells[name]
     LastCastedSpells[name] = nil
 
-    if not lastCastedSpell then
+    spellID = spellID or (lastCastedSpell and lastCastedSpell["spellID"])
+    if not spellID then
         return
     end
 
-    local spellID = lastCastedSpell["spellID"]
+    targetGuid = targetGuid or (lastCastedSpell and lastCastedSpell["target"])
 
     if not PRAYER_OF_HEALING_NAMES[spellID] then
-        if lastCastedSpell["target"] == "" then
-            --print(colorize("Don't have a target of spell cast for "..name.."'s "..spellID, 1, 0, 0))
+        if not targetGuid or targetGuid == "" then
             return
         end
-        local cache = PTUnit.Get(lastCastedSpell["target"])
+        -- PTUnit.Cached is keyed by unit-id on non-SuperWoW (CreateCaches), by GUID
+        -- on SuperWoW (UpdateGuidCaches). PTUnit.Get translates unit-id → GUID
+        -- internally for SuperWoW, so always pass a unit-id.
+        local lookupUnit = targetGuid
+        if PTGuidRoster then
+            local units = PTGuidRoster.GetUnits(targetGuid)
+            if units and units[1] then
+                lookupUnit = units[1]
+            end
+        end
+        local cache = PTUnit.Get(lookupUnit)
         if not cache or cache == PTUnit then
-            --print(colorize("Could not find "..name.."'s unit while updating cache!", 1, 0, 0))
             return
         end
         if cache.HasHealingModifier then
-            --print(colorize("Not updating cache for "..name.."'s "..spellID.." because of healing modifier", 0.5, 0.5, 0.5))
             return
         end
     end
@@ -630,109 +644,40 @@ eventFrame:SetScript("OnUpdate", function()
     end
 end)
 
-local cmatch = PTUtil.cmatch
-
+-- Native 3.3.5a combat-log driver. The Vanilla CHAT_MSG_SPELL_*_BUFF events
+-- were retired in TBC 2.4; on Wrath everything routes through CLEU.
+-- arg layout (no hideCaster on 3.3.5a): timestamp, subevent, sourceGUID,
+-- sourceName, sourceFlags, destGUID, destName, destFlags, then the
+-- prefix/suffix payload starting at arg9.
 local combatLogFrame = CreateFrame("Frame", "PTHealPredictCombatLog")
-combatLogFrame:RegisterEvent("CHAT_MSG_SPELL_SELF_BUFF")
-combatLogFrame:RegisterEvent("CHAT_MSG_SPELL_FRIENDLYPLAYER_BUFF")
-combatLogFrame:RegisterEvent("CHAT_MSG_SPELL_HOSTILEPLAYER_BUFF") -- Needed to see casts coming from other players to yourself
-combatLogFrame:RegisterEvent("CHAT_MSG_SPELL_PARTY_BUFF")
-combatLogFrame:RegisterEvent("CHAT_MSG_SPELL_PET_BUFF")
+combatLogFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 combatLogFrame:SetScript("OnEvent", function()
-    if string.find(arg1, "critically") then
-        return
-    end
+    local subevent = arg2
+    if subevent == "SPELL_HEAL" then
+        -- arg12 (amount) is the post-cap effective heal; arg13 (overhealing) is
+        -- the wasted portion reported separately. Don't subtract — that would
+        -- double-count the cap.
+        local sourceName = arg4
+        local destGUID = arg6
+        local spellName = arg10
+        local amount = arg12
+        if not sourceName or not spellName or not amount or amount <= 0 then return end
+        UpdateCache(amount, sourceName, spellName, destGUID)
 
-    if string.find(arg1, "Bonus Healing") then
-        return
-    end
+    elseif subevent == "SPELL_PERIODIC_HEAL" then
+        local sourceGUID, sourceName = arg3, arg4
+        local destGUID, destName = arg6, arg7
+        local spellName = arg10
+        local amount = arg12
+        if not sourceGUID or not destGUID or not spellName or not amount or amount <= 0 then return end
+        UpdateCacheHot(spellName, amount, destGUID, destName, sourceGUID, sourceName)
 
-    local spell, targetName, heal = cmatch(arg1, HEALEDSELFOTHER) -- "Your %s heals %s for %d."
-    if spell and targetName and heal then
-        UpdateCache(tonumber(heal))
-        return
-    end
-
-    local spell, heal = cmatch(arg1, HEALEDSELFSELF) -- "Your %s heals you for %d."
-    if spell and heal then
-        UpdateCache(tonumber(heal))
-        return
-    end
-
-    local name, spell, heal = cmatch(arg1, HEALEDOTHERSELF) -- "%s's %s heals you for %d."
-    if name and spell and heal then
-        UpdateCache(tonumber(heal), name)
-        return
-    end
-
-    local name, spell, targetName, heal = cmatch(arg1, HEALEDOTHEROTHER) -- "%s's %s heals %s for %d."
-    if name and spell and targetName and heal then
-        UpdateCache(tonumber(heal), name)
-        return
-    end
-end)
-
-local periodicCombatLogFrame = CreateFrame("Frame", "PTHealPredictPerCombatLog")
-periodicCombatLogFrame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS")
-periodicCombatLogFrame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_BUFFS")
-periodicCombatLogFrame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_BUFFS")
-periodicCombatLogFrame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_BUFFS")
-periodicCombatLogFrame:SetScript("OnEvent", function()
-    local heal, spell = cmatch(arg1, PERIODICAURAHEALSELFSELF) -- "You gain %d health from %s."
-    if heal and spell then
-        local selfName = UnitName("player")
-        local selfGuid = getSelfGuid()
-        UpdateCacheHot(spell, heal, selfGuid, selfName, selfGuid, selfName)
-        return
-    end
-
-    local name, heal, spell = cmatch(arg1, PERIODICAURAHEALSELFOTHER) -- "%s gains %d health from your %s."
-    if name and heal and spell then
-        local casterGuid = getSelfGuid()
-        local targetGuid = getGuidFromLogName(name)
-        UpdateCacheHot(spell, heal, targetGuid, name, casterGuid, UnitName(casterGuid))
-        return
-    end
-
-    local heal, name, spell = cmatch(arg1, PERIODICAURAHEALOTHERSELF) -- "You gain %d health from %s's %s."
-    if heal and name and spell then
-        local casterGuid = getGuidFromLogName(name)
-        local targetGuid = getSelfGuid()
-        UpdateCacheHot(spell, heal, targetGuid, UnitName("player"), casterGuid, name)
-        return
-    end
-
-    local targetName, heal, name, spell = cmatch(arg1, PERIODICAURAHEALOTHEROTHER) -- "%s gains %d health from %s's %s."
-    if targetName and heal and name and spell then
-        local casterGuid = getGuidFromLogName(name)
-        local targetGuid = getGuidFromLogName(targetName)
-        UpdateCacheHot(spell, heal, targetGuid, targetName, casterGuid, name)
-        return
-    end
-end)
-
-local auraCombatLogFrame = CreateFrame("Frame", "PTHealPredictAuraCombatLog")
-auraCombatLogFrame:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER")
-auraCombatLogFrame:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_PARTY")
-auraCombatLogFrame:SetScript("OnEvent", function()
-    local spell, name = cmatch(arg1, AURAREMOVEDOTHER) -- "%s fades from %s."
-    if spell and name then
-        local guid = getGuidFromLogName(name)
-        if not guid then
-            return
+    elseif subevent == "SPELL_AURA_REMOVED" then
+        local destGUID = arg6
+        local spellName = arg10
+        if destGUID and spellName then
+            RemoveHoT(spellName, destGUID)
         end
-        RemoveHoT(spell, guid)
-        return
-    end
-end)
-
-local selfAuraCombatLogFrame = CreateFrame("Frame", "PTHealPredictSelfAuraCombatLog")
-selfAuraCombatLogFrame:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_SELF")
-selfAuraCombatLogFrame:SetScript("OnEvent", function()
-    local spell = cmatch(arg1, AURAREMOVEDSELF) -- "%s fades from you."
-    if spell then
-        RemoveHoT(spell, getSelfGuid())
-        return
     end
 end)
 
