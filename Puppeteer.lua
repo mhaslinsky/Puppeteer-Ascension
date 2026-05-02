@@ -155,6 +155,52 @@ function Debug(msg)
     DEFAULT_CHAT_FRAME:AddMessage(msg)
 end
 
+-- Captures unit-frame state into PTGlobalOptions._debug. Triggered manually via
+-- /run Puppeteer.DumpFrameState("target"); /reload to flush to SavedVariables.
+local function snapshotFrame(f)
+    if not f then return "nil" end
+    local r, g, b, a
+    if f.GetStatusBarColor then
+        r, g, b, a = f:GetStatusBarColor()
+    end
+    local parent = f:GetParent()
+    return {
+        name = f:GetName() or "unnamed",
+        shown = f:IsShown() and 1 or 0,
+        visible = f:IsVisible() and 1 or 0,
+        alpha = f:GetAlpha(),
+        width = f:GetWidth(),
+        height = f:GetHeight(),
+        left = f:GetLeft(),
+        top = f:GetTop(),
+        level = f:GetFrameLevel(),
+        strata = f:GetFrameStrata(),
+        parent = parent and (parent:GetName() or "anon") or "nil",
+        value = f.GetValue and f:GetValue() or "n/a",
+        texture = (f.GetStatusBarTexture and f:GetStatusBarTexture()) and "set" or "nil",
+        color = r and (r..","..g..","..b..","..(a or 1)) or "n/a",
+    }
+end
+
+function DumpFrameState(unit)
+    if not PTGlobalOptions then return end
+    PTGlobalOptions._debug = {timestamp = GetTime(), frames = {}}
+    for ui in UnitFrames(unit or "target") do
+        table.insert(PTGlobalOptions._debug.frames, {
+            unit = ui:GetUnit(),
+            unitGuid = UnitGUID(ui:GetUnit() or ""),
+            unitExists = UnitExists(ui:GetUnit() or "") and 1 or 0,
+            incomingHealing = ui.incomingHealing,
+            incomingDirectHealing = ui.incomingDirectHealing,
+            healthBar = snapshotFrame(ui.healthBar),
+            incomingHealthBar = snapshotFrame(ui.incomingHealthBar),
+            incomingDirectHealthBar = snapshotFrame(ui.incomingDirectHealthBar),
+            container = ui.GetContainer and snapshotFrame(ui:GetContainer()) or "nil",
+        })
+    end
+    DEFAULT_CHAT_FRAME:AddMessage("[PT] state captured for "..(unit or "target")..". /reload to flush.")
+end
+
 function UpdateUnitFrameGroups()
     for _, group in pairs(UnitFrameGroups) do
         group:UpdateUIPositions()
@@ -165,7 +211,7 @@ function UpdateAllIncomingHealing()
     if PTHealPredict then
         for _, ui in ipairs(AllUnitFrames) do
             if PTOptions.UseHealPredictions then
-                local _, guid = UnitExists(ui:GetUnit())
+                local guid = UnitGUID(ui:GetUnit())
                 ui:SetIncomingHealing(PTHealPredict.GetIncomingHealing(guid))
             else
                 ui:SetIncomingHealing(0)
@@ -346,13 +392,9 @@ function OnAddonLoaded()
         PTHealPredict.OnLoad()
 
         PTHealPredict.HookUpdates(function(guid, incomingHealing, incomingDirectHealing)
-            if not PTOptions.UseHealPredictions then
-                return
-            end
+            if not PTOptions.UseHealPredictions then return end
             local units = GuidRoster.GetUnits(guid)
-            if not units then
-                return
-            end
+            if not units then return end
             for _, unit in ipairs(units) do
                 for ui in UnitFrames(unit) do
                     ui:SetIncomingHealing(incomingHealing, incomingDirectHealing)
@@ -745,9 +787,7 @@ function CheckGroup()
             ui:UpdateOutline()
         end
     end
-    if superwow then
-        PTHealPredict.SetRelevantGUIDs(GuidRoster.GetTrackedGuids())
-    end
+    PTHealPredict.SetRelevantGUIDs(GuidRoster.GetTrackedGuids())
     RunTrackingScan()
     --EndTiming("CheckGroup")
 end

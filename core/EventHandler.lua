@@ -96,8 +96,6 @@ RegisterEventHandler("PLAYER_TARGET_CHANGED", function()
     PTUnit.Get("target"):UpdateAll()
     if GuidRoster then
         GuidRoster.SetUnitGuid("target", guid)
-    end
-    if util.IsSuperWowPresent() then
         PTHealPredict.SetRelevantGUIDs(GuidRoster.GetTrackedGuids())
     end
 
