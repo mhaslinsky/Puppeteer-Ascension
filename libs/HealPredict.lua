@@ -5,6 +5,19 @@ PTHealPredict = {}
 PTUtil.SetEnvironment(PTHealPredict)
 local _G = getfenv(0)
 
+-- Temporary diagnostic logger; pushes into PTGlobalOptions._debug.log so the
+-- transcript survives /reload via SavedVariables. Read from disk to avoid
+-- making the user paste chat back. Capped to 200 entries.
+function PTDbgLog(msg)
+    if not _G.PTGlobalOptions then return end
+    if not _G.PTGlobalOptions._debug then _G.PTGlobalOptions._debug = {} end
+    if not _G.PTGlobalOptions._debug.log then _G.PTGlobalOptions._debug.log = {} end
+    local log = _G.PTGlobalOptions._debug.log
+    table.insert(log, msg)
+    while table.getn(log) > 200 do
+        table.remove(log, 1)
+    end
+end
 
 RelevantGUIDs = {} -- A set of GUIDs to listen to
 
@@ -228,11 +241,11 @@ function UpdateCache(heal, name, spellID, targetGuid)
     local lastCastedSpell = LastCastedSpells[name]
     LastCastedSpells[name] = nil
 
-    DEFAULT_CHAT_FRAME:AddMessage("[PT] UpdateCache heal="..tostring(heal).." name="..tostring(name).." spell="..tostring(spellID).." tgt="..tostring(targetGuid))
+    PTDbgLog("[PT] UpdateCache heal="..tostring(heal).." name="..tostring(name).." spell="..tostring(spellID).." tgt="..tostring(targetGuid))
 
     spellID = spellID or (lastCastedSpell and lastCastedSpell["spellID"])
     if not spellID then
-        DEFAULT_CHAT_FRAME:AddMessage("[PT]  bail: no spellID")
+        PTDbgLog("[PT]  bail: no spellID")
         return
     end
 
@@ -240,7 +253,7 @@ function UpdateCache(heal, name, spellID, targetGuid)
 
     if not PRAYER_OF_HEALING_NAMES[spellID] then
         if not targetGuid or targetGuid == "" then
-            DEFAULT_CHAT_FRAME:AddMessage("[PT]  bail: no target")
+            PTDbgLog("[PT]  bail: no target")
             return
         end
         -- PTUnit.Cached is keyed by unit-id on non-SuperWoW (CreateCaches), by GUID
@@ -253,14 +266,14 @@ function UpdateCache(heal, name, spellID, targetGuid)
                 lookupUnit = units[1]
             end
         end
-        DEFAULT_CHAT_FRAME:AddMessage("[PT]  lookupUnit="..tostring(lookupUnit))
+        PTDbgLog("[PT]  lookupUnit="..tostring(lookupUnit))
         local cache = PTUnit.Get(lookupUnit)
         if not cache or cache == PTUnit then
-            DEFAULT_CHAT_FRAME:AddMessage("[PT]  bail: no PTUnit cache for "..tostring(lookupUnit))
+            PTDbgLog("[PT]  bail: no PTUnit cache for "..tostring(lookupUnit))
             return
         end
         if cache.HasHealingModifier then
-            DEFAULT_CHAT_FRAME:AddMessage("[PT]  bail: HasHealingModifier")
+            PTDbgLog("[PT]  bail: HasHealingModifier")
             return
         end
     end
@@ -665,9 +678,9 @@ combatLogFrame:SetScript("OnEvent", function()
         local destGUID = arg6
         local spellName = arg10
         local amount = arg12
-        DEFAULT_CHAT_FRAME:AddMessage("[PT] CLEU SPELL_HEAL src="..tostring(sourceName).." dst="..tostring(destGUID).." spell="..tostring(spellName).." amt="..tostring(amount))
+        PTDbgLog("[PT] CLEU SPELL_HEAL src="..tostring(sourceName).." dst="..tostring(destGUID).." spell="..tostring(spellName).." amt="..tostring(amount))
         if not sourceName or not spellName or not amount or amount <= 0 then
-            DEFAULT_CHAT_FRAME:AddMessage("[PT]  bail: missing arg or amt<=0")
+            PTDbgLog("[PT]  bail: missing arg or amt<=0")
             return
         end
         UpdateCache(amount, sourceName, spellName, destGUID)
