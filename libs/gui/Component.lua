@@ -349,6 +349,14 @@ local infoTooltip = CreateFrame("GameTooltip", "PTGuiInfoTooltip", UIParent, "Ga
 
 local singleTextArray = {}
 local function ShowTooltip(attachTo, texts)
+    -- 3.3.5a SetOwner is strict: rejects non-Frame owners, tooltips, and self.
+    if not attachTo or not attachTo.GetObjectType or attachTo == infoTooltip then
+        return
+    end
+    local objectType = attachTo:GetObjectType()
+    if objectType == "GameTooltip" then
+        return
+    end
     infoTooltip:SetOwner(attachTo, "ANCHOR_RIGHT")
     infoTooltip:SetPoint("RIGHT", attachTo, "LEFT", 0, 0)
 

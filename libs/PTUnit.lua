@@ -6,7 +6,6 @@ PTUtil.SetEnvironment(PTUnit)
 local _G = getfenv(0)
 
 local util = PTUtil
-local GetAuraInfo = util.GetAuraInfo
 local AllUnits = util.AllUnits
 local AllRealUnits = util.AllRealUnits
 local AllUnitsSet = util.AllUnitsSet
@@ -237,7 +236,6 @@ function PTUnit:ClearAuras()
     self.HasImportantDebuff = false
 end
 
-local claimedAuras = {}
 function PTUnit:UpdateAuras()
     local unit = self.Unit
 
@@ -257,32 +255,26 @@ function PTUnit:UpdateAuras()
     local buffs = self.Buffs
     local buffsMap = self.BuffsMap
     local buffsIDSet = self.BuffsIDSet
-    local time = GetTime()
-    for index = 1, 32 do
-        local texture, stacks, id = UnitBuff(unit, index)
-        if not texture then
+    for index = 1, 40 do
+        local name, _, texture, stacks, _, duration, expirationTime, unitCaster, _, _, id = UnitAura(unit, index, "HELPFUL")
+        if not name then
             break
         end
-        local name, type = GetAuraInfo(unit, index, "Buff", id)
         if PuppeteerSettings.TrackedHealingBuffs[name] then
             self.HasHealingModifier = true
         end
-        local auraTime = nil
-        if id and self.AuraTimes[id] then
-            local auraTimes = self.AuraTimes[id]
-            local highestDuration = -100
-            for owner, aura in pairs(auraTimes) do
-                local timeLeft = aura.endTime - time
-                if not claimedAuras[aura] and timeLeft > highestDuration then
-                    auraTime = aura
-                    highestDuration = timeLeft
-                end
-            end
-            if auraTime then
-                claimedAuras[auraTime] = 1
-            end
+        local auraTime
+        if duration and duration > 0 then
+            auraTime = {
+                startTime = expirationTime - duration,
+                endTime = expirationTime,
+                duration = duration,
+                owner = unitCaster,
+                ownerName = unitCaster and UnitName(unitCaster) or nil,
+                nampower = false
+            }
         end
-        local buff = {name = name, index = index, texture = texture, stacks = stacks, type = type, id = id, time = auraTime}
+        local buff = {name = name, index = index, texture = texture, stacks = stacks, type = "", id = id, time = auraTime}
         if not buffsMap[name] then
             buffsMap[name] = {}
         end
@@ -299,33 +291,28 @@ function PTUnit:UpdateAuras()
     local debuffsMap = self.DebuffsMap
     local debuffsIDSet = self.DebuffsIDSet
     local typedDebuffs = self.TypedDebuffs -- Dispellable debuffs
-    for index = 1, 16 do
-        local texture, stacks, type, id = UnitDebuff(unit, index)
-        if not texture then
+    for index = 1, 40 do
+        local name, _, texture, stacks, debuffType, duration, expirationTime, unitCaster, _, _, id = UnitAura(unit, index, "HARMFUL")
+        if not name then
             break
         end
-        type = type or ""
-        local name = GetAuraInfo(unit, index, "Debuff", id)
+        local type = debuffType or ""
         if PuppeteerSettings.TrackedHealingDebuffs[name] then
             self.HasHealingModifier = true
         end
         if PuppeteerSettings.ImportantDebuffs[name] then
             self.HasImportantDebuff = true
         end
-        local auraTime = nil
-        if id and self.AuraTimes[id] then
-            local auraTimes = self.AuraTimes[id]
-            local highestDuration = -100
-            for owner, aura in pairs(auraTimes) do
-                local timeLeft = aura.endTime - time
-                if not claimedAuras[aura] and timeLeft > highestDuration then
-                    auraTime = aura
-                    highestDuration = timeLeft
-                end
-            end
-            if auraTime then
-                claimedAuras[auraTime] = 1
-            end
+        local auraTime
+        if duration and duration > 0 then
+            auraTime = {
+                startTime = expirationTime - duration,
+                endTime = expirationTime,
+                duration = duration,
+                owner = unitCaster,
+                ownerName = unitCaster and UnitName(unitCaster) or nil,
+                nampower = false
+            }
         end
         local debuff = {name = name, index = index, texture = texture, stacks = stacks, type = type, id = id, time = auraTime}
         if not debuffsMap[name] then
@@ -348,7 +335,6 @@ function PTUnit:UpdateAuras()
         table.insert(debuffs, debuff)
     end
     self.AurasPopulated = true
-    util.ClearTable(claimedAuras)
     Puppeteer.EndTiming("PTUnitAuraUpdate")
 end
 

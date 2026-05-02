@@ -80,7 +80,8 @@ gui\component\uf\CastIcon.lua
 gui\component\uf\HighlightBorder.lua
 
 libs\GuidRoster.lua
-libs\AuraTracker.lua
+# Phase 3: AuraTracker.lua removed. UnitAura returns duration/expirationTime natively
+# in 3.3.5a, so the SuperWoW-only cast-tracking that fed AuraTimes is no longer needed.
 libs\PTUnit.lua
 libs\ShaguUtil.lua
 libs\HealPredict.lua
