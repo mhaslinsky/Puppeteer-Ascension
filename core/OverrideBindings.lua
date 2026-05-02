@@ -42,6 +42,11 @@ function InitOverrideBindingsMapping()
         end
     end
 
+    -- SetBinding is protected on 3.3.5a; calling in combat triggers a "prevented
+    -- call of secure function" error. The cleanup pass can wait for combat to end.
+    if InCombatLockdown() then
+        return
+    end
     for _, bindingName in ipairs(bindingsNames) do
         local k1, k2, k3, k4, k5, k6, k7, k8 = GetBindingKey(bindingName)
         for _, key in ipairs({k1, k2, k3, k4, k5, k6, k7, k8}) do
@@ -131,11 +136,17 @@ end
 -- End of UPDATE_BINDINGS mitigation
 
 function ApplyOverrideBindings()
+    -- SetBinding is protected on 3.3.5a; in combat the call is blocked and prints
+    -- "AddOn 'Puppeteer' prevented the call of the secure function 'SetBinding()'".
+    -- Skip the rebind entirely so we don't spam the error for every mouseover.
+    if InCombatLockdown() then
+        return
+    end
     RemoveOverrideBindings()
     StopUpdateBindingsUpdates()
     for fullButton, index in pairs(KeybindIndexMap) do
         local binding = GetBindingAction(fullButton)
-        
+
         if binding == "" then -- Lazy set the binding to our binding and don't touch until setting up again
             SetBinding(fullButton, bindingsNames[index])
         elseif not bindingsNamesSet[binding] then -- If it's not our binding, it must be stored and replaced
@@ -148,6 +159,9 @@ end
 
 function RemoveOverrideBindings()
     if util.IsTableEmpty(StoredBindings) then
+        return
+    end
+    if InCombatLockdown() then
         return
     end
     StopUpdateBindingsUpdates()
