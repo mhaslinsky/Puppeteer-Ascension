@@ -220,29 +220,40 @@ end
 
 local GENERIC_CHANGE_FACTOR = 0.05
 local PLAYER_CHANGE_FACTOR = 0.25
-function UpdateCache(heal, name)
+-- spellID and targetGuid are CLEU-supplied when available; fall back to LastCastedSpells
+-- for the legacy chat-log path or when CLEU's SPELL_HEAL wins the dispatch race against
+-- UNIT_SPELLCAST_SUCCEEDED (LastCastedSpells is set in the SUCCEEDED handler).
+function UpdateCache(heal, name, spellID, targetGuid)
     name = name or UnitName("player")
     local lastCastedSpell = LastCastedSpells[name]
     LastCastedSpells[name] = nil
 
-    if not lastCastedSpell then
+    spellID = spellID or (lastCastedSpell and lastCastedSpell["spellID"])
+    if not spellID then
         return
     end
 
-    local spellID = lastCastedSpell["spellID"]
+    targetGuid = targetGuid or (lastCastedSpell and lastCastedSpell["target"])
 
     if not PRAYER_OF_HEALING_NAMES[spellID] then
-        if lastCastedSpell["target"] == "" then
-            --print(colorize("Don't have a target of spell cast for "..name.."'s "..spellID, 1, 0, 0))
+        if not targetGuid or targetGuid == "" then
             return
         end
-        local cache = PTUnit.Get(lastCastedSpell["target"])
+        -- PTUnit.Cached is keyed by unit-id on non-SuperWoW (CreateCaches), by GUID
+        -- on SuperWoW (UpdateGuidCaches). PTUnit.Get translates unit-id → GUID
+        -- internally for SuperWoW, so always pass a unit-id.
+        local lookupUnit = targetGuid
+        if PTGuidRoster then
+            local units = PTGuidRoster.GetUnits(targetGuid)
+            if units and units[1] then
+                lookupUnit = units[1]
+            end
+        end
+        local cache = PTUnit.Get(lookupUnit)
         if not cache or cache == PTUnit then
-            --print(colorize("Could not find "..name.."'s unit while updating cache!", 1, 0, 0))
             return
         end
         if cache.HasHealingModifier then
-            --print(colorize("Not updating cache for "..name.."'s "..spellID.." because of healing modifier", 0.5, 0.5, 0.5))
             return
         end
     end
@@ -640,23 +651,23 @@ combatLogFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 combatLogFrame:SetScript("OnEvent", function()
     local subevent = arg2
     if subevent == "SPELL_HEAL" then
+        -- arg12 (amount) is the post-cap effective heal; arg13 (overhealing) is
+        -- the wasted portion reported separately. Don't subtract — that would
+        -- double-count the cap.
         local sourceName = arg4
-        local amount, overhealing, _, critical = arg12, arg13, arg14, arg15
-        if not sourceName then return end
-        if critical then return end -- preserve "don't learn from crits"
-        local effective = amount - (overhealing or 0)
-        if effective <= 0 then return end -- ignore full overheals
-        UpdateCache(effective, sourceName)
+        local destGUID = arg6
+        local spellName = arg10
+        local amount = arg12
+        if not sourceName or not spellName or not amount or amount <= 0 then return end
+        UpdateCache(amount, sourceName, spellName, destGUID)
 
     elseif subevent == "SPELL_PERIODIC_HEAL" then
         local sourceGUID, sourceName = arg3, arg4
         local destGUID, destName = arg6, arg7
         local spellName = arg10
-        local amount, overhealing = arg12, arg13
-        if not sourceGUID or not destGUID or not spellName then return end
-        local effective = amount - (overhealing or 0)
-        if effective <= 0 then return end
-        UpdateCacheHot(spellName, effective, destGUID, destName, sourceGUID, sourceName)
+        local amount = arg12
+        if not sourceGUID or not destGUID or not spellName or not amount or amount <= 0 then return end
+        UpdateCacheHot(spellName, amount, destGUID, destName, sourceGUID, sourceName)
 
     elseif subevent == "SPELL_AURA_REMOVED" then
         local destGUID = arg6
