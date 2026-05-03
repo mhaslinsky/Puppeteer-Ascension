@@ -985,12 +985,15 @@ function GetUnitsInRange(center, units, range)
     return inRange
 end
 
--- Blizzard's UI functions seem to get called referring to a global called "this" referring to the UI object.
--- This function calls a function on the object, emulating the "this" variable.
+-- Invokes `func` as if Blizzard fired it on `object`. Sets the Vanilla `this` global
+-- (some 1.12-era handlers read from it) AND passes `object` as the first arg
+-- (Wrath FrameXML handlers receive self as the first argument). The single caller —
+-- Dropdown.lua's chevron-button OnClick relay — needs the Wrath form because the
+-- 3.3.5a UIDropDownMenuTemplate's OnClick body does `self:GetParent()`.
 function CallWithThis(object, func)
     local prevThis = _G.this
     _G.this = object
-    func()
+    func(object)
     _G.this = prevThis
 end
 
