@@ -349,12 +349,16 @@ local infoTooltip = CreateFrame("GameTooltip", "PTGuiInfoTooltip", UIParent, "Ga
 
 local singleTextArray = {}
 local function ShowTooltip(attachTo, texts)
-    -- 3.3.5a SetOwner is strict: rejects non-Frame owners, tooltips, and self.
+    -- 3.3.5a SetOwner is strict: rejects non-Frame owners (FontString, Texture),
+    -- tooltips, and self. PTGuiText wraps a FontString as its handle, so walk up to
+    -- the nearest Frame ancestor before calling SetOwner.
     if not attachTo or not attachTo.GetObjectType or attachTo == infoTooltip then
         return
     end
-    local objectType = attachTo:GetObjectType()
-    if objectType == "GameTooltip" then
+    while attachTo and not (attachTo.IsObjectType and attachTo:IsObjectType("Frame")) do
+        attachTo = attachTo.GetParent and attachTo:GetParent() or nil
+    end
+    if not attachTo or attachTo == infoTooltip or attachTo:GetObjectType() == "GameTooltip" then
         return
     end
     infoTooltip:SetOwner(attachTo, "ANCHOR_RIGHT")
