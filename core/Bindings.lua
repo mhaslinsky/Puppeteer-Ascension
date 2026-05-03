@@ -48,6 +48,7 @@ function SetSelectedBindingsLoadout(name)
     PTBindings.SelectedLoadout = name
     PTSettingsGui.LoadBindings()
     InitBindingDisplayCache()
+    if SecureClickCast then SecureClickCast.RefreshAll() end
 end
 
 function GetBindingLoadouts()

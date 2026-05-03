@@ -57,6 +57,9 @@ core\Command.lua
 core\OverrideBindings.lua
 core\Bindings.lua
 core\ActionBindings.lua
+# Phase 5 / Slice 1: secure click-cast + secure keybind dispatch.
+# Loads after Bindings.lua because it depends on GetBinding() and the loadout schema.
+core\SecureClickCast.lua
 core\Roles.lua
 # Phase 4: EnemyTracker.lua removed. SuperWoW-only enemy-frame group is gone with the
 # capability-flag hardcoding; native 3.3.5a has no equivalent unit-token enumeration.

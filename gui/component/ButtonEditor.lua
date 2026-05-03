@@ -75,6 +75,7 @@ function PTButtonEditor:New()
             PTSettingsGui.UpdateBindingsInterface()
             Puppeteer.InitBindingDisplayCache()
             Puppeteer.InitOverrideBindingsMapping()
+            if Puppeteer.SecureClickCast then Puppeteer.SecureClickCast.RefreshAll() end
             obj:Dispose()
             PTSettingsGui.PopOverlayFrame()
         end)

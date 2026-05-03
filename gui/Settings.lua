@@ -375,6 +375,7 @@ end
 function SaveBindings()
     Puppeteer.GetBindingLoadouts()[Puppeteer.GetSelectedBindingsLoadoutName()] = Puppeteer.PruneLoadout(EditedBindings)
     LoadBindings()
+    if Puppeteer.SecureClickCast then Puppeteer.SecureClickCast.RefreshAll() end
 end
 
 function UpdateUnsavedChanges()

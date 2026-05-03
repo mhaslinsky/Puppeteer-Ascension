@@ -1118,7 +1118,7 @@ function SearchSpells(startStr, limit, noNonRank)
         else
             for j = 1, numSpells do
                 local spellName, rank, realID = GetSpellName(id, "spell")
-                if not IsSpellPassive(id, "spell") then
+                if not IsPassiveSpell(id, "spell") then
                     local fullName = spellName
                     if rank ~= "" then
                         fullName = fullName.."("..rank..")"

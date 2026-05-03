@@ -103,6 +103,14 @@ function PTUnitFrameGroup:CanShowInEnvironment(environment)
 end
 
 function PTUnitFrameGroup:Show()
+    -- Phase 5: secure overlay descendants make container Show/Hide protected in combat.
+    -- Defer until PLAYER_REGEN_ENABLED via the pending* flags; flushed by FlushPending().
+    if InCombatLockdown() then
+        self.pendingShow = true
+        self.pendingHide = nil
+        return
+    end
+    self.pendingShow = nil
     self.container:Show()
     for _, ui in pairs(self.uis) do
         ui:UpdateAll()
@@ -110,7 +118,21 @@ function PTUnitFrameGroup:Show()
 end
 
 function PTUnitFrameGroup:Hide()
+    if InCombatLockdown() then
+        self.pendingHide = true
+        self.pendingShow = nil
+        return
+    end
+    self.pendingHide = nil
     self.container:Hide()
+end
+
+function PTUnitFrameGroup:FlushPendingShown()
+    if self.pendingShow then
+        self:Show()
+    elseif self.pendingHide then
+        self:Hide()
+    end
 end
 
 -- Used while moving frames to avoid the lag while moving over other toplevel frames

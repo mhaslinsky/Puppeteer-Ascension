@@ -249,6 +249,7 @@ function OnAddonLoaded()
 
     InitOverrideBindingsMapping()
     InitBindingDisplayCache()
+    if SecureClickCast then SecureClickCast.Init() end
 
     -- Phase 4: Nampower SetCVar + PTUnitProxy reapply removed (capability flags hardcoded false).
 
