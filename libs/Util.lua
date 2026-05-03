@@ -14,203 +14,23 @@ local getn = table.getn
 Classes = {"WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"}
 HealerClasses = {"PRIEST", "DRUID", "SHAMAN", "PALADIN"}
 
--- Vanilla 1.12 client mods (SuperWoW, UnitXP SP3, Nampower, VanillaUtils) do not exist on 3.3.5a/Ascension.
--- Hardcoded false; version-tier constants kept because consumers reference them via util.HasModVersion.
-UnitXPSP3 = false
-UnitXPSP3_Version = -1
-UnitXPSP3Latest = 0
+-- Vanilla 1.12 client mods (SuperWoW, UnitXP SP3, Nampower, VanillaUtils) and the Turtle WoW
+-- 1.12 fork do not exist on 3.3.5a / Project Ascension. Flags are pinned false and the cap
+-- helpers below return constants so legacy callers compile without dead branches at the call
+-- site.
 SuperWoW = false
-SuperWoWFeatureLevel = 0
-SuperWoW_v1_2 = 1
-SuperWoW_v1_3 = 2
-SuperWoW_v1_4 = 3
-SuperWoWLatest = SuperWoW_v1_4
+UnitXPSP3 = false
 Nampower = false
-NampowerFeatureLevel = 0
-Nampower_v3_0 = 1
-NampowerLatest = Nampower_v3_0
 VanillaUtils = false
-
-EnabledMods = {
-    ["SuperWoW"] = SuperWoW and SuperWoWFeatureLevel,
-    ["Nampower"] = Nampower and NampowerFeatureLevel,
-    ["UnitXP SP3"] = UnitXPSP3 and 0,
-    ["VanillaUtils"] = VanillaUtils and 0
-}
-
--- Providers are ordered by preference
-ModFeatures = {
-    {
-        Name = "GUID Units",
-        Description = "Better tracking of players/mobs. Grants the ability to add players/mobs to a separate Focus frame.",
-        Providers = {{"Nampower", Nampower_v3_0}, {"SuperWoW"}}
-    },
-    {
-        Name = "Aura Timers",
-        Description = "See timers on buffs and debuffs, with Nampower providing many more than SuperWoW.",
-        Providers = {{"Nampower", Nampower_v3_0}, {"SuperWoW"}}
-    },
-    {
-        Name = "Friendly Distance",
-        Description = "See precise distance to friendly players, with UnitXP SP3 being more accurate.",
-        Providers = {{"UnitXP SP3"}, {"SuperWoW"}}
-    },
-    {
-        Name = "Enemy Distance",
-        Description = "See precise distance to enemies.",
-        Providers = {{"UnitXP SP3"}}
-    },
-    {
-        Name = "Friendly Position",
-        Hidden = true,
-        Providers = {{"SuperWoW"}, {"VanillaUtils"}}
-    },
-    {
-        Name = "Enemy Position",
-        Hidden = true,
-        Providers = {{"VanillaUtils"}}
-    },
-    {
-        Name = "Heal Predictions",
-        Description = "See incoming healing from players that do not have HealComm and predict more accurate numbers.",
-        Providers = {{"Nampower", Nampower_v3_0}, {"SuperWoW"}}
-    },
-    {
-        Name = "Mouseover",
-        Description = "Set your actual mouseover target when hovering over unit frames.",
-        Providers = {{"SuperWoW"}}
-    },
-    {
-        Name = "Direct Casting",
-        Description = "Directly cast spells rather than using split-second target switching tricks.",
-        Providers = {{"Nampower", Nampower_v3_0}, {"SuperWoW"}}
-    },
-    {
-        Name = "LOS",
-        Description = "See when someone is out of your line-of-sight.",
-        Providers = {{"UnitXP SP3"}}
-    },
-    {
-        Name = "Spell Queue",
-        Description = "Queue spell casts like in modern versions of WoW, drastically increasing casting efficiency.",
-        Providers = {{"Nampower"}}
-    }
-}
-EnabledModFeatures = {}
-for _, feature in ipairs(ModFeatures) do
-    for _, providerEntry in ipairs(feature.Providers) do
-        local modInfo = EnabledMods[providerEntry[1]]
-        if modInfo and (not providerEntry[2] or modInfo >= providerEntry[2]) then
-            feature.ChosenProvider = providerEntry[1]
-            EnabledModFeatures[feature.Name] = providerEntry[1]
-            break
-        end
-    end
-end
-
-function GetModState(present, upToDate)
-    if not present then
-        return "Not Detected"
-    end
-    if not upToDate then
-        return "Outdated"
-    end
-    return "Detected"
-end
+TurtleWow = false
 
 function IsSuperWowPresent()
-    return SuperWoW
+    return false
 end
 
-function GetSuperWoWVersionText()
-    if not SuperWoW then
-        return ""
-    end
-    return "Version "..(SUPERWOW_VERSION or "1.1 or older")
+function IsTurtleWow()
+    return false
 end
-
-function IsSuperWoWUpToDate()
-    return SuperWoWFeatureLevel >= SuperWoWLatest
-end
-
-function GetSuperWoWVersionState()
-    return GetModState(IsSuperWowPresent(), IsSuperWoWUpToDate())
-end
-
-function IsUnitXPSP3Present()
-    return UnitXPSP3
-end
-
-function GetUnitXPSP3VersionText()
-    if not UnitXPSP3 then
-        return ""
-    end
-    return UnitXPSP3_Version > -1 and "Version "..date("%x", UnitXPSP3_Version) or "Old Version"
-end
-
-function IsUnitXPSP3UpToDate()
-    return UnitXPSP3_Version >= UnitXPSP3Latest
-end
-
-function GetUnitXPSP3VersionState()
-    return GetModState(IsUnitXPSP3Present(), IsUnitXPSP3UpToDate())
-end
-
--- Doesn't detect Namreeb's Nampower
-function IsNampowerPresent()
-    return Nampower
-end
-
-function GetNampowerVersionText()
-    if not Nampower then
-        return ""
-    end
-    if not GetNampowerVersion then
-        return "Old Version"
-    end
-    local major, minor, patch = GetNampowerVersion()
-    return "Version "..major.."."..minor.."."..patch
-end
-
-function IsNampowerUpToDate()
-    return NampowerFeatureLevel >= NampowerLatest
-end
-
-function GetNampowerVersionState()
-    return GetModState(IsNampowerPresent(), IsNampowerUpToDate())
-end
-
-function GetModVersionText(mod)
-    if mod == "SuperWoW" then
-        return GetSuperWoWVersionText()
-    elseif mod == "UnitXP SP3" then
-        return GetUnitXPSP3VersionText()
-    elseif mod == "Nampower" then
-        return GetNampowerVersionText()
-    elseif mod == "VanillaUtils" then
-        return "Unknown"
-    end
-    return "Invalid Mod: "..tostring(mod)
-end
-
-function GetModVersionState(mod)
-    if mod == "SuperWoW" then
-        return GetSuperWoWVersionState()
-    elseif mod == "UnitXP SP3" then
-        return GetUnitXPSP3VersionState()
-    elseif mod == "Nampower" then
-        return GetNampowerVersionState()
-    elseif mod == "VanillaUtils" then
-        return GetModState(true, true)
-    end
-    return "Invalid Mod: "..tostring(mod)
-end
-
-function HasModVersion(mod, version)
-    return EnabledMods[mod] and EnabledMods[mod] >= version
-end
-
-TurtleWow = false -- Turtle WoW is a vanilla 1.12 fork; not applicable to 3.3.5a/Ascension.
 
 PowerColors = {
     ["mana"] = {0.1, 0.25, 1}, --{r = 0, g = 0, b = 0.882}, Not accurate, changed color to make brighter
@@ -788,63 +608,6 @@ function GetResourceCost(spellName)
     return 0
 end
 
-if HasModVersion("Nampower", Nampower_v3_0) then
-    function GetResourceCost(spellName)
-        local spellID = GetSpellIdForName(spellName)
-        local cost = GetSpellRecField(spellID, "manaCost")
-        local powerType = GetSpellRecField(spellID, "powerType")
-        if powerType == 1 then -- Rage is 10x for some reason
-            cost = cost / 10
-        end
-        return cost or "unknown", PowerTypeMap[powerType]
-    end
-end
-
--- Returns the aura's name and its school type
-function ScanAuraInfo(unit, index, type)
-    -- Make these texts blank since they don't clear otherwise
-    local leftText = _G["PTScanningTooltipTextLeft1"]
-    leftText:SetText("")
-    local rightText = _G["PTScanningTooltipTextRight1"]
-    rightText:SetText("")
-    if type == "Buff" then
-        ScanningTooltip:SetUnitBuff(unit, index)
-    else
-        ScanningTooltip:SetUnitDebuff(unit, index)
-    end
-    return leftText:GetText() or "", rightText:GetText() or ""
-end
-
-if SuperWoW or TurtleWow then
-    local auraNameCache = {}
-    local auraTypeCache = {}
-
-    function GetAuraInfo(unit, index, type, id)
-        if not id then
-            if type == "Buff" then
-                local _, _, i = UnitBuff(unit, index)
-                id = i
-            else
-                local _, _, _, i = UnitDebuff(unit, index)
-                id = i
-            end
-            if not id then -- Uh oh, Turtle lost the ID
-                return ScanAuraInfo(unit, index, type)
-            end
-        end
-        if not auraNameCache[id] then
-            auraNameCache[id], auraTypeCache[id] = ScanAuraInfo(unit, index, type)
-        end
-        return auraNameCache[id], auraTypeCache[id]
-    end
-
-    function GetCachedAuraInfo(id)
-        return auraNameCache[id], auraTypeCache[id]
-    end
-else
-    GetAuraInfo = ScanAuraInfo
-end
-
 function GetActionSlotName(slot)
     _G["PTScanningTooltipTextLeft1"]:SetText("")
     ScanningTooltip:SetAction(slot)
@@ -1361,60 +1124,14 @@ function IsReallyInInstance()
     return IsInInstance() and not InstanceWorldZones[GetRealZoneText()]
 end
 
--- Returns distance if UnitXP SP3 or SuperWoW is present;
--- 0 if unit is offline, or unit is enemy and SuperWoW is the distance provider;
--- 9999 if unit is not visible or UnitXP SP3 is not present.
--- Might try to do hacky stuff for people without mods later on.
+-- Coarse range bracket via CheckInteractDistance — returns 9 / 27 (player → other) or 28 (otherwise).
+-- Stock 3.3.5a does not expose precise yard distances; SuperWoW / UnitXP SP3 used to.
+-- 0 if either unit is offline; 9999 if either unit is not visible.
 function GetDistanceTo(unit)
     return GetDistanceBetween("player", unit)
 end
 
-function GetDistanceBetween_SuperWow(unit1, unit2)
-    if not UnitIsConnected(unit1) or not UnitIsConnected(unit2) then
-        return 0
-    end
-
-    if not UnitIsVisible(unit1) or not UnitIsVisible(unit2) then
-        return 9999
-    end
-
-    local x1, z1, y1 = UnitPosition(unit1)
-    local x2, z2, y2 = UnitPosition(unit2)
-    
-    if not x1 or not x2 then
-        return 0
-    end
-    local dx = x2 - x1
-    local dz = z2 - z1
-    local dy = y2 - y1
-    return math.sqrt(dx*dx + dz*dz + dy*dy)
-end
-
-function GetDistanceBetween_UnitXPSP3_Legacy(unit1, unit2)
-    if not UnitIsConnected(unit1) or not UnitIsConnected(unit2) then
-        return 0
-    end
-
-    if not UnitIsVisible(unit1) or not UnitIsVisible(unit2) then
-        return 9999
-    end
-
-    return math.max((UnitXP("distanceBetween", unit1, unit2) or (9999 + 3)) - 3, 0) -- UnitXP SP3 modded function
-end
-
-function GetDistanceBetween_UnitXPSP3(unit1, unit2)
-    if not UnitIsConnected(unit1) or not UnitIsConnected(unit2) then
-        return 0
-    end
-
-    if not UnitIsVisible(unit1) or not UnitIsVisible(unit2) then
-        return 9999
-    end
-
-    return math.max(UnitXP("distanceBetween", unit1, unit2) or 9999, 0) -- UnitXP SP3 modded function
-end
-
-function GetDistanceBetween_Vanilla(unit1, unit2)
+function GetDistanceBetween(unit1, unit2)
     if not UnitIsConnected(unit1) or not UnitIsConnected(unit2) then
         return 0
     end
@@ -1435,57 +1152,20 @@ function GetDistanceBetween_Vanilla(unit1, unit2)
     return 28
 end
 
-if UnitXPSP3 then
-    if UnitXPSP3_Version > -1 then -- Newer versions have more accurate distances
-        GetDistanceBetween = GetDistanceBetween_UnitXPSP3
-    else -- Fall back to old distance calculation
-        GetDistanceBetween = GetDistanceBetween_UnitXPSP3_Legacy
-    end
-elseif SuperWoW then
-    GetDistanceBetween = GetDistanceBetween_SuperWow
-else -- sad
-    GetDistanceBetween = GetDistanceBetween_Vanilla
-end
-
--- SuperWoW cannot provide precise distance for enemies
-function CanClientGetPreciseDistance(alsoEnemies)
-    return UnitXPSP3 or (SuperWoW and not alsoEnemies)
+function CanClientGetPreciseDistance()
+    return false
 end
 
 function GetUnitPosition(unit)
     return nil
 end
 
-if VanillaUtils then
-    GetUnitPosition = function(unit)
-        return UnitXP("unitPosition", unit)
-    end
-elseif SuperWoW then
-    GetUnitPosition = UnitPosition
-end
-
--- Returns whether unit is in sight if UnitXP SP3 is present, otherwise always true.
-IsInSight = function()
+function IsInSight()
     return true
 end
 
-do -- This is done to prevent crashes from checking sight too early
-    local sightEnableFrame = CreateFrame("Frame")
-    sightEnableFrame:RegisterEvent("ADDON_LOADED")
-    sightEnableFrame:SetScript("OnEvent", function()
-        if arg1 == "Puppeteer" then
-            if UnitXPSP3 then
-                IsInSight = function(unit)
-                    return UnitXP("inSight", "player", unit) -- UnitXP SP3 modded function
-                end
-            end
-            sightEnableFrame:SetScript("OnEvent", nil)
-        end
-    end)
-end
-
 function CanClientSightCheck()
-    return UnitXPSP3
+    return false
 end
 
 -- From pfQuest
@@ -1502,45 +1182,28 @@ function GetPlayerFacing()
     return minimaparrow:GetFacing()
 end
 
+-- The Out of Range Arrow rendering subsystem (PTArrowUpdater_OnUpdate in PTUnitFrame.lua)
+-- needs precise unit positions / facing angles, which only SuperWoW / UnitXP SP3 / VanillaUtils
+-- supplied. None of those exist on 3.3.5a. The OnUpdate is gated permanently off (see
+-- Puppeteer.SetOutOfRangeArrowEnabled), so these stubs only exist to keep the global references
+-- valid; they are not expected to be invoked. Candidate for full deletion alongside the arrow
+-- setting itself.
 function GetUnitDirection(from, to)
-    local sx, sz = GetUnitPosition(from)
-    local tx, tz = GetUnitPosition(to)
-
-    local dx = tx - sx
-    local dz = tz - sz
-
-    return math.atan2(dz, dx)
+    return 0
 end
 
 function GetFacingAngle(unit)
-    local angle = GetUnitDirection("player", unit) - GetPlayerFacing()
-    angle = modulo(angle, math.pi * 2)
-    return angle
+    return 0
 end
 
-if VanillaUtils then
-    function GetCameraFacing()
-        local sx, sy = GetUnitPosition("player")
-        local cx, cy = UnitXP("cameraPosition")
-        return math.atan2(cy - sy, cx - sx) + math.pi
-    end
-else
-    GetCameraFacing = GetPlayerFacing -- Sad
-end
+GetCameraFacing = GetPlayerFacing
 
 function GetCameraFacingAngle(unit)
-    local cameraAngle = GetUnitDirection("player", unit) - GetCameraFacing()
-    cameraAngle = modulo(cameraAngle, math.pi * 2)
-    return cameraAngle
+    return 0
 end
-
 
 function CanClientGetAuraIDs()
-    return SuperWoW-- or TurtleWow -- Turtle ID fetching is not reliable
-end
-
-function IsTurtleWow()
-    return TurtleWow
+    return false
 end
 
 AllUnitsSet = ToSet(AllUnits)

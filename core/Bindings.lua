@@ -466,17 +466,11 @@ function RunTargetedAction(binding, unit, actionFunc, mustTempTarget)
 end
 
 local targetedSpell
-local targetedSpellUnit
 local function targetedCastFunc()
-    if util.IsSuperWowPresent() then
-        CastSpellByName(targetedSpell, targetedSpellUnit)
-    else
-        CastSpellByName(targetedSpell)
-    end
+    CastSpellByName(targetedSpell)
 end
 local function setupTargetedCast(spell, unit)
     targetedSpell = spell
-    targetedSpellUnit = unit
     return targetedCastFunc
 end
 function RunBinding_Spell(binding, unit)
@@ -506,7 +500,10 @@ function RunBinding_Spell(binding, unit)
         return
     end
 
-    RunTargetedAction(binding, unit, setupTargetedCast(spell, unit), not util.IsSuperWowPresent())
+    -- Stock 3.3.5a CastSpellByName cannot directly target a unit; RunTargetedAction
+    -- handles the temp-target dance. The mustTempTarget arg used to be gated on SuperWoW
+    -- (which provided unit-targeted CastSpellByName); without SuperWoW this is always true.
+    RunTargetedAction(binding, unit, setupTargetedCast(spell, unit), true)
 end
 
 function RunBinding_Action(binding, unit, unitFrame)
@@ -535,11 +532,7 @@ BindingScriptAPI = {
         local buffs = {...}
         for _, buff in ipairs(buffs) do
             if not unitData:HasBuff(buff) then
-                if util.IsSuperWowPresent() then
-                    CastSpellByName(buff, unit)
-                else
-                    CastSpellByName(buff)
-                end
+                CastSpellByName(buff)
                 return buff
             end
         end

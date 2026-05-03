@@ -1124,8 +1124,6 @@ function PTUnitFrame:UpdateAuras()
     if not enemy then
         table.sort(debuffs, self.DebuffSorter)
         util.AppendArrayElements(debuffs, typedDebuffs)
-    elseif util.IsSuperWowPresent() then
-        table.sort(debuffs, enemyDebuffSorter)
     end
 
     local auraTrackerProps = profile.AuraTracker
@@ -1785,6 +1783,10 @@ end
 local updater = CreateFrame("Frame", "PTArrowUpdater")
 
 function Puppeteer.SetOutOfRangeArrowEnabled(enabled)
-    updater:SetScript("OnUpdate", (enabled and util.EnabledModFeatures["Friendly Position"]) and PTArrowUpdater_OnUpdate or nil)
+    -- The directional arrow needs precise unit position / facing angles which stock 3.3.5a
+    -- does not expose; OnUpdate stays unset so PTArrowUpdater_OnUpdate is never invoked.
+    -- The setting checkbox remains for now; deleting it (and the arrow subsystem) is on the
+    -- Phase 7 follow-up list once we decide whether to remove user-facing dead settings.
+    updater:SetScript("OnUpdate", nil)
     arrow:Hide()
 end
