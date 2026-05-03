@@ -242,9 +242,9 @@ function UpdateCache(heal, name, spellID, targetGuid)
         if not targetGuid or targetGuid == "" then
             return
         end
-        -- PTUnit.Cached is keyed by unit-id on non-SuperWoW (CreateCaches), by GUID
-        -- on SuperWoW (UpdateGuidCaches). PTUnit.Get translates unit-id → GUID
-        -- internally for SuperWoW, so always pass a unit-id.
+        -- PTUnit.Cached is keyed by unit-id; resolve targetGuid → unit-id via
+        -- GuidRoster. If the GUID isn't in the roster (e.g. cross-realm or out-of-group
+        -- unit), the cache lookup will miss and we'll bail at the next check.
         local lookupUnit = targetGuid
         if PTGuidRoster then
             local units = PTGuidRoster.GetUnits(targetGuid)
@@ -370,14 +370,6 @@ local function getGuidFromLogName(name)
     local unit = getUnitFromName(name)
     if unit then
         return UnitGUID(unit)
-    end
-    -- SuperWoW custom-units fallback
-    if PTUnitProxy and PTUnitProxy.CustomUnitGUIDMap then
-        for _, guid in pairs(PTUnitProxy.CustomUnitGUIDMap) do
-            if UnitName(guid) == name then
-                return guid
-            end
-        end
     end
 end
 

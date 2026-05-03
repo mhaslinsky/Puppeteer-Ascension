@@ -101,7 +101,7 @@ function PTCastIcon:Start(spellName, spellTexture, time, unit, healAmount, unitF
     self.unitFrame = unitFrame
     self.state = "CASTING"
     activeIcons[unit] = self
-    local isCasterSelf = PTUnitProxy.UnitIsUnit("player", unit)
+    local isCasterSelf = UnitIsUnit("player", unit)
     local isSelfHealer = Puppeteer.GetUnitAssignedRole("player") == "Healer"
     local shouldBeCenter = isCasterSelf and isSelfHealer
     local canBeCenter = isCasterSelf or not isSelfHealer
@@ -110,8 +110,8 @@ function PTCastIcon:Start(spellName, spellTexture, time, unit, healAmount, unitF
     local totalHealth = 0
     local totalUnits = 0
     for _, unit in ipairs(group.units) do
-        if PTUnitProxy.UnitExists(unit) and PTUnitProxy.UnitIsConnected(unit) then
-            totalHealth = totalHealth + PTUnitProxy.UnitHealthMax(unit)
+        if UnitExists(unit) and UnitIsConnected(unit) then
+            totalHealth = totalHealth + UnitHealthMax(unit)
             totalUnits = totalUnits + 1
         end
     end
@@ -141,7 +141,7 @@ function PTCastIcon:Start(spellName, spellTexture, time, unit, healAmount, unitF
     end
     self.castIcons = unitFrame.castIcons
     -- Remove our own icon in case it's fading still
-    if shouldBeCenter and unitFrame.castIcons[1] and PTUnitProxy.UnitIsUnit("player", unitFrame.castIcons[1].unit) then
+    if shouldBeCenter and unitFrame.castIcons[1] and UnitIsUnit("player", unitFrame.castIcons[1].unit) then
         unitFrame.castIcons[1]:Dispose()
     end
     for i = (canBeCenter and 1 or 2), 40 do

@@ -39,14 +39,6 @@ RegisterActionBind({
     Name = "Menu",
     Description = "Opens the context menu for the unit, if applicable",
     Script = function(unit, unitFrame)
-        -- Resolve focus to a proper unit if possible
-        if AllCustomUnitsSet[unit] then
-            unit = PTUnitProxy.ResolveCustomUnit(unit)
-            if not unit then
-                return
-            end
-        end
-
         local dropdown
 
         local specialContexts = {
@@ -119,44 +111,7 @@ RegisterActionBind({
         SetUnitRoleAndUpdate(unit, nil)
     end
 })
-RegisterActionBind({
-    Name = "Focus",
-    Description = "Add/remove a unit to your Focus frames",
-    Script = function(unit, unitFrame)
-        if not util.IsSuperWowPresent() then
-            DEFAULT_CHAT_FRAME:AddMessage(colorize("You need SuperWoW to focus targets.", 1, 0.5, 0.5))
-            return
-        end
-
-        ToggleFocusUnit(unit)
-    end
-})
-RegisterActionBind({
-    Name = "Promote Focus",
-    Description = "Move a focus to the top",
-    Script = function(unit, unitFrame)
-        if not util.IsSuperWowPresent() then
-            DEFAULT_CHAT_FRAME:AddMessage(colorize("You need SuperWoW to focus targets.", 1, 0.5, 0.5))
-            return
-        end
-
-        PromoteFocus(unit)
-    end
-})
---[[
-RegisterActionBind({
-    Name = "Demote Focus",
-    Description = "Move a focus to the bottom",
-    Script = function(unit, unitFrame)
-        if not util.IsSuperWowPresent() then
-            DEFAULT_CHAT_FRAME:AddMessage(colorize("You need SuperWoW to focus targets.", 1, 0.5, 0.5))
-            return
-        end
-        -- TODO: Logic flawed
-        local guid = PTGuidRoster.GetUnitGuid(unit)
-
-        PT_UnfocusUnit(unit)
-        PT_FocusUnit(guid)
-    end
-})
-]]
+-- Phase 4: Focus / Promote Focus / Demote Focus action binds removed with the
+-- UnitProxy delete (multi-focus feature cut for v2.0; native single-slot focus
+-- restoration deferred to v2.1). Persisted bindings of these names will silently
+-- no-op via RunBinding_Action's `if not action then return end` guard.

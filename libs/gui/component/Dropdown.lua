@@ -41,11 +41,23 @@ function PTGuiDropdown:New()
         dropdownSetHeight(self, 25)
     end
     obj:SetShowShadow(true) -- Need to do this on creation to fix the visual position
-    -- Make clicking anywhere on the dropdown open the menu
+    -- Make clicking anywhere on the dropdown open the menu.
+    -- Phase 4: was relaying through the chevron button's OnClick via CallWithThis,
+    -- but on 3.3.5a that path is unreliable (the Blizzard chevron's OnClick body
+    -- expects to be invoked from a real Button click, and Ascension's
+    -- UIDropDownMenuTemplate may bind extra logic we can't reliably re-fire).
+    -- ToggleDropDownMenu directly is the modern-WoW idiom and works on the dropdown
+    -- frame regardless of which sub-region was clicked.
     dropdown:EnableMouse(true)
-    dropdown:SetScript("OnMouseUp", function()
-        if MouseIsOver(this) then
-            PTUtil.CallWithThis(_G[this:GetName().."Button"], _G[this:GetName().."Button"]:GetScript("OnClick"))
+    -- Toggle the menu on mouse-up anywhere on the dropdown frame. The chevron
+    -- Button child has its own native OnClick (Blizzard FrameXML) which fires too
+    -- when clicked directly; both call ToggleDropDownMenu, but mouse events on a
+    -- child Button do not bubble OnMouseUp to the parent in 3.3.5a, so we won't
+    -- double-toggle.
+    dropdown:SetScript("OnMouseUp", function(self)
+        local frame = self or this
+        if frame and MouseIsOver(frame) then
+            ToggleDropDownMenu(nil, nil, frame)
         end
     end)
     dropdown:SetScript("OnSizeChanged", function()
@@ -146,7 +158,9 @@ function PTGuiDropdown:SetParent(obj)
         self:SetShowShadow(true)
         self:GetHandle().displayMode = nil
     end
-    UIDropDownMenu_Initialize(self:GetHandle(), function(level)
+    -- Wrath calls the init callback as `(frame, level)`; 1.12 used `this` and `(level)`.
+    -- Bind `frame` to `_` so `level` actually receives the level number.
+    UIDropDownMenu_Initialize(self:GetHandle(), function(_, level)
         self:Initialize(level)
     end, menuType)
     self.super.SetParent(self, obj)

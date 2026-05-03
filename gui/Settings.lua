@@ -541,14 +541,7 @@ function CreateTab_Options_Advanced(panel)
     factory:checkbox("(TWoW)\nAuto Role", {"If enabled, the Role Action menu shows auto role detection options", "Enabled Account-Wide"}, 
         "Global.Experiments.AutoRole",
         Puppeteer.InitRoleDropdown)
-    factory:checkbox("(SuperWoW & UnitXP)\nEnemy Frames", 
-        {"If enabled, you will see an additional frame group with in-combat enemies", "Requires SuperWoW and UnitXP SP3", 
-        "Enabled Per-Character"},
-        "Experiments.Enemy",
-        function()
-            Puppeteer.SetEnemyTrackingEnabled(PuppeteerSettings.IsExperimentEnabled("Enemy"))
-        end)
-    factory:checkbox("(SuperWoW)\nCast Icons", {"If enabled, you will see incoming casts over unit frames", 
+    factory:checkbox("(SuperWoW)\nCast Icons", {"If enabled, you will see incoming casts over unit frames",
             "This feature is highly subject to changes", "Requires SuperWoW!", "Enabled Per-Character"},
         "Experiments.CastIcons",
         function()
@@ -768,7 +761,7 @@ function CreateTab_Customize()
         :SetFontSize(14)
     
 
-    local preferredFrameOrder = {"Party", "Pets", "Raid", "Raid Pets", "Target", "Focus"}
+    local preferredFrameOrder = {"Party", "Pets", "Raid", "Raid Pets", "Target"}
     local frameDropdown = CreateLabeledDropdown(frameStyleContainer, "Configure Frame", "The frame to edit the attributes of")
         :SetWidth(150)
         :SetDynamicOptions(function(addOption, level, args)
@@ -815,10 +808,6 @@ function CreateTab_Customize()
             func = function(self, gui)
                 local selectedFrame = frameDropdown:GetText()
                 PTOptions.ChosenProfiles[selectedFrame] = self.text
-
-                if selectedFrame == "Focus" and not util.IsSuperWowPresent() then
-                    return
-                end
 
                 -- Here's some probably buggy profile hotswapping
                 local group = Puppeteer.UnitFrameGroups[selectedFrame]

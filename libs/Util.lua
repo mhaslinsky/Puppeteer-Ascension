@@ -3,7 +3,7 @@
 PTUtil = {}
 
 function PTUtil.SetEnvironment(t, index)
-    setmetatable(t, {__index = index or PTUnitProxy or getfenv(1)})
+    setmetatable(t, {__index = index or getfenv(1)})
     setfenv(2, t)
 end
 
@@ -14,38 +14,22 @@ local getn = table.getn
 Classes = {"WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"}
 HealerClasses = {"PRIEST", "DRUID", "SHAMAN", "PALADIN"}
 
-UnitXPSP3 = pcall(UnitXP, "inSight", "player", "player") -- WTB better way to check for UnitXP SP3
+-- Vanilla 1.12 client mods (SuperWoW, UnitXP SP3, Nampower, VanillaUtils) do not exist on 3.3.5a/Ascension.
+-- Hardcoded false; version-tier constants kept because consumers reference them via util.HasModVersion.
+UnitXPSP3 = false
 UnitXPSP3_Version = -1
-if UnitXPSP3 and pcall(UnitXP, "version", "coffTimeDateStamp") then
-    UnitXPSP3_Version = UnitXP("version", "coffTimeDateStamp") or -1
-end
 UnitXPSP3Latest = 0
-SuperWoW = SpellInfo ~= nil
+SuperWoW = false
 SuperWoWFeatureLevel = 0
 SuperWoW_v1_2 = 1
 SuperWoW_v1_3 = 2
 SuperWoW_v1_4 = 3
 SuperWoWLatest = SuperWoW_v1_4
-if SUPERWOW_VERSION then
-    if SUPERWOW_VERSION == "1.2" then
-        SuperWoWFeatureLevel = SuperWoW_v1_2
-    elseif SUPERWOW_VERSION == "1.3" then
-        SuperWoWFeatureLevel = SuperWoW_v1_3
-    else -- Anything newer than 1.3 is considered as 1.4 feature set
-        SuperWoWFeatureLevel = SuperWoW_v1_4
-    end
-end
-Nampower = QueueSpellByName ~= nil
+Nampower = false
 NampowerFeatureLevel = 0
 Nampower_v3_0 = 1
 NampowerLatest = Nampower_v3_0
-if GetNampowerVersion then
-    local major, minor, patch = GetNampowerVersion()
-    if major >= 3 then
-        NampowerFeatureLevel = Nampower_v3_0
-    end
-end
-VanillaUtils = pcall(UnitXP, "unitPosition", "player")
+VanillaUtils = false
 
 EnabledMods = {
     ["SuperWoW"] = SuperWoW and SuperWoWFeatureLevel,
@@ -226,7 +210,7 @@ function HasModVersion(mod, version)
     return EnabledMods[mod] and EnabledMods[mod] >= version
 end
 
-TurtleWow = TURTLE_WOW_VERSION ~= nil
+TurtleWow = false -- Turtle WoW is a vanilla 1.12 fork; not applicable to 3.3.5a/Ascension.
 
 PowerColors = {
     ["mana"] = {0.1, 0.25, 1}, --{r = 0, g = 0, b = 0.882}, Not accurate, changed color to make brighter
@@ -282,9 +266,12 @@ RaidPetUnits = {}
 for i = 1, MAX_RAID_MEMBERS do
     RaidPetUnits[i] = "raidpet"..i
 end
-CustomUnits = PTUnitProxy and PTUnitProxy.AllCustomUnits or {}
-CustomUnitsSet = PTUnitProxy and PTUnitProxy.AllCustomUnitsSet or {}
-FocusUnits = PTUnitProxy and PTUnitProxy.CustomUnitsMap["focus"] or {}
+-- Phase 4: custom-unit (focus2..N, enemy1..N) arrays removed with UnitProxy delete.
+-- Kept as empty stubs because Puppeteer.lua and PTUnitFrame.lua read from these globals;
+-- a future Task A pass can clean those readers up alongside the dual-key collapse.
+CustomUnits = {}
+CustomUnitsSet = {}
+FocusUnits = {}
 
 local unitArrays = {PartyUnits, PetUnits, RaidUnits, RaidPetUnits, TargetUnits}
 AllUnits = {}
@@ -296,26 +283,6 @@ end
 AllRealUnits = {}
 for i, unit in ipairs(AllUnits) do
     AllRealUnits[i] = unit
-end
-if PTUnitProxy then
-    for _, unit in ipairs(CustomUnits) do
-        table.insert(AllUnits, unit)
-    end
-    PTUnitProxy.RegisterUpdateListener(function()
-        local i = 1
-        for _, unit in ipairs(AllRealUnits) do
-            AllUnits[i] = unit
-            i = i + 1
-        end
-        for _, unit in ipairs(CustomUnits) do
-            AllUnits[i] = unit
-            i = i + 1
-        end
-        ClearTable(AllUnitsSet)
-        for k, v in pairs(ToSet(AllUnits)) do
-            AllUnitsSet[k] = v
-        end
-    end)
 end
 
 local assetsPath = "Interface\\AddOns\\Puppeteer\\assets\\"
@@ -1018,12 +985,15 @@ function GetUnitsInRange(center, units, range)
     return inRange
 end
 
--- Blizzard's UI functions seem to get called referring to a global called "this" referring to the UI object.
--- This function calls a function on the object, emulating the "this" variable.
+-- Invokes `func` as if Blizzard fired it on `object`. Sets the Vanilla `this` global
+-- (some 1.12-era handlers read from it) AND passes `object` as the first arg
+-- (Wrath FrameXML handlers receive self as the first argument). The single caller —
+-- Dropdown.lua's chevron-button OnClick relay — needs the Wrath form because the
+-- 3.3.5a UIDropDownMenuTemplate's OnClick body does `self:GetParent()`.
 function CallWithThis(object, func)
     local prevThis = _G.this
     _G.this = object
-    func()
+    func(object)
     _G.this = prevThis
 end
 

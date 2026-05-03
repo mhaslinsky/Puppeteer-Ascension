@@ -1,5 +1,10 @@
 -- Caches important information about units and makes the data easily readable at any time.
--- If using SuperWoW, the cache map will have GUIDs as the key instead of unit IDs.
+--
+-- The cache is keyed by unit-id ("party1", "raid3", "target", etc.) — not by GUID.
+-- WotLK-native APIs like UnitHealth/UnitAura require a unit-token, not a GUID, so
+-- callers always have a token in hand by the time they reach PTUnit.Get. CLEU-driven
+-- code paths that only have a GUID translate via PTGuidRoster.GetUnits(guid) before
+-- looking up.
 
 PTUnit = {}
 PTUtil.SetEnvironment(PTUnit)
@@ -9,18 +14,18 @@ local util = PTUtil
 local AllUnits = util.AllUnits
 local AllRealUnits = util.AllRealUnits
 local AllUnitsSet = util.AllUnitsSet
-local superwow = util.IsSuperWowPresent()
 local canGetAuraIDs = util.CanClientGetAuraIDs()
 
 
 -- Non-instance variable
--- Key: Unit ID(Unmodded) or GUID(SuperWoW) | Value: PTUnit Instance
+-- Key: unit-id ("party1", "target", etc.) | Value: PTUnit instance
 PTUnit.Cached = {}
 
 PTUnit.Unit = nil
 
 PTUnit.AurasPopulated = false
--- Buff/debuff entry contents: {"name", "stacks", "texture", "index", "type", "id"(SuperWoW only)}
+-- Buff/debuff entry contents: {"name", "stacks", "texture", "index", "type", "id"}
+-- 3.3.5a's UnitAura returns spellID natively as the 11th return value.
 PTUnit.Buffs = {} -- Array of all buffs
 PTUnit.BuffsMap = {} -- Key: Name | Value: Array of buffs with key's name
 PTUnit.BuffsIDSet = {} -- Set of currently applied buff IDs
@@ -34,67 +39,25 @@ PTUnit.TrackedDebuffTypes = {} -- Set of debuff types that exclude frivilous deb
 PTUnit.HasHealingModifier = false
 PTUnit.HasImportantDebuff = false
 
--- Only used with SuperWoW, managed in AuraTracker.lua
-PTUnit.AuraTimes = {} -- Key: Aura Name | Value: {"startTime", "duration"}
-PTUnit.AuraTimesByName = {}
-
 PTUnit.DisplayPVP = false -- This is not the real PVP status of the unit, this is affected by other conditions
 
 PTUnit.Distance = 0
 PTUnit.InSight = true
 PTUnit.IsNew = false
 
--- Non-GUID function
 function CreateCaches()
-    if superwow then
-        Puppeteer.print("Tried to create non-SuperWoW caches while using SuperWoW!")
-        return
-    end
     for _, unit in ipairs(AllUnits) do
         PTUnit:New(unit)
     end
 end
 
-function UpdateGuidCaches()
-    local cached = PTUnit.Cached
-    local prevCached = PTUtil.CloneTableCompost(cached)
-    for _, unit in ipairs(AllRealUnits) do
-        local exists, guid = UnitExists(unit)
-        if exists then
-            if not cached[guid] then
-                PTUnit:New(guid)
-                Puppeteer.EvaluateTracking(unit, true)
-            end
-            prevCached[guid] = nil
-        end
-    end
-    for guid, units in pairs(PTUnitProxy.GUIDCustomUnitMap) do
-        if not cached[guid] then
-            PTUnit:New(guid)
-            for _, unit in ipairs(units) do
-                Puppeteer.EvaluateTracking(unit, true)
-            end
-        end
-        prevCached[guid] = nil
-    end
-    for garbageGuid, cache in pairs(prevCached) do
-        cache:Dispose()
-        cached[garbageGuid] = nil
-    end
-end
-
--- Likely never needed to be called when using GUIDs
 function UpdateAllUnits()
     for _, cache in pairs(PTUnit.Cached) do
         cache:UpdateAll()
     end
 end
 
--- Get the PTUnit by unit ID. If using SuperWoW, GUID or unit ID is accepted.
 function Get(unit)
-    if superwow and AllUnitsSet[unit] then
-        return PTUnit.Cached[PTGuidRoster.GetUnitGuid(unit)] or PTUnit
-    end
     return PTUnit.Cached[unit] or PTUnit
 end
 
@@ -111,16 +74,12 @@ function PTUnit:New(unit)
     obj.AurasPopulated = true -- To force aura fields to generate
     obj.IsNew = true
     obj.IsSelf = UnitIsUnit(unit, "player")
-    if superwow then
-        obj.AuraTimes = {}
-        obj.AuraTimesByName = {}
-    end
     obj:UpdateAll()
     return obj
 end
 
 function PTUnit:Dispose()
-    util.CompostReclaim(self.AuraTimes)
+    -- AuraTimes table was a SuperWoW-only feature; nothing to reclaim on 3.3.5a.
 end
 
 function PTUnit:UpdateAll()
@@ -404,41 +363,12 @@ function PTUnit:GetDebuffs(name)
     return self.DebuffsMap[name]
 end
 
-function PTUnit:ApplyTimedAura(spellName, spellID, owner, duration, isNampower)
-    if not self.AuraTimes[spellID] then
-        self.AuraTimes[spellID] = {}
-    end
-    if not self.AuraTimesByName[spellName] then
-        self.AuraTimesByName[spellName] = {}
-    end
-    duration = duration or 0
-    local time = GetTime()
-    local entry = {
-        startTime = time,
-        endTime = time + duration,
-        duration = duration,
-        owner = owner,
-        ownerName = UnitName(owner),
-        nampower = isNampower ~= nil and isNampower ~= false
-    }
-    if self.AuraTimes[spellID][owner] then
-    end
-    self.AuraTimes[spellID][owner] = entry
-    self.AuraTimesByName[spellName] = entry
+-- Phase 4: ApplyTimedAura removed with AuraTracker.lua retirement; UnitAura on 3.3.5a
+-- returns native duration/expirationTime, so the SuperWoW-side aura-timer cache is gone.
 
-    self:UpdateAuras()
-    for ui in Puppeteer.UnitFrames(self.Unit) do
-        ui:UpdateAuras()
-    end
-end
-
+-- Stub kept for binding-script API compatibility (BindingScriptEditor advertises
+-- unitData:GetAuraTimeRemaining(auraName)). Returns nil on 3.3.5a; consider rewiring
+-- to UnitAura's expirationTime if the binding-script docs grow this back.
 function PTUnit:GetAuraTimeRemaining(name)
-    if not superwow then
-        return
-    end
-    local auraTime = self.AuraTimesByName[name]
-    if not auraTime then
-        return
-    end
-    return auraTime.startTime - GetTime() + auraTime.duration
+    return nil
 end
