@@ -33,12 +33,6 @@ for _, spells in pairs(debuffTypeCureSpells) do
     PTLocale.Keys(spells)
 end
 function UpdateTrackedDebuffTypes()
-    for _, class in ipairs(util.GetClasses()) do
-        if not debuffTypeCureSpells[class] then
-            debuffTypeCureSpells[class] = {}
-        end
-    end
-
     local trackedDebuffTypes = {}
     do
         local id = 1;
@@ -46,10 +40,13 @@ function UpdateTrackedDebuffTypes()
             local _, _, _, numSpells = GetSpellTabInfo(i);
             for j = 1, numSpells do
                 local spellName = GetSpellName(id, "spell");
-                local types = debuffTypeCureSpells[playerClass][spellName]
-                if types then
-                    for _, type in ipairs(types) do
-                        trackedDebuffTypes[type] = 1
+                -- Scan all classes' dispel tables: Ascension Mystic Enchantments can grant cross-class dispels.
+                for _, classMap in pairs(debuffTypeCureSpells) do
+                    local types = classMap[spellName]
+                    if types then
+                        for _, type in ipairs(types) do
+                            trackedDebuffTypes[type] = 1
+                        end
                     end
                 end
                 id = id + 1
