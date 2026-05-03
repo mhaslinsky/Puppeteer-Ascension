@@ -11,7 +11,7 @@ Unit-frames addon for healers, ported from [OldManAlpha/Puppeteer](https://githu
 
 ## Status
 
-**v2.0 — port complete.** The addon runs on stock 3.3.5a clients with no external client mods. Tested in real raid use on **Bronzebeard / Warcraft Reborn** (Project Ascension's Classic+ realm). It should work on any 3.3.5a-based Ascension realm; the classless-realm specifics (Area 52 / Conquest of Azeroth) are tracked separately — see [Roadmap](#roadmap).
+**v2.0 — port complete.** The addon runs on stock 3.3.5a clients with no external client mods. Tested on **Bronzebeard / Warcraft Reborn** (Project Ascension's Classic+ realm). It should work on any 3.3.5a-based Ascension realm; the classless-realm specifics (Area 52 / Conquest of Azeroth) are tracked separately — see [Roadmap](#roadmap).
 
 If you used the original Vanilla 1.12 addon, see [What changed from 1.12](#what-changed-from-the-112-version) below.
 
