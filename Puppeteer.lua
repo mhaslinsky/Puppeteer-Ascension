@@ -305,8 +305,6 @@ function OnAddonLoaded()
     -- clients is offline until Phase 3 wires up LibHealComm-4.0.
 
     InitRoleDropdown()
-    
-    SetLFTAutoRoleEnabled(PTOptions.LFTAutoRole)
 
     SetOutOfRangeArrowEnabled(PTOptions.OutOfRangeArrow)
 

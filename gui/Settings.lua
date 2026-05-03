@@ -421,7 +421,6 @@ function CreateTab_Options()
     CreateTab_Options_SpellsTooltip(tabPanel)
     CreateTab_Options_Other(tabPanel)
     CreateTab_Options_Advanced(tabPanel)
-    CreateTab_Options_Mods(tabPanel)
 end
 
 function CreateTab_Options_Casting(panel)
@@ -445,7 +444,7 @@ function CreateTab_Options_Casting(panel)
         "Only stops you from using Spell bindings"}, "PVPFlagProtection")
     factory:checkbox("Target While Casting", {"Target the unit while most bindings run",
         "Note that these binding types override this rule:",
-        "Spell - Always targets unless using SuperWoW",
+        "Spell - Always targets",
         "Action - Never targets unless specified by action",
         "Item - Always targets",
         "Multi - Never targets"}, "TargetWhileCasting")
@@ -523,15 +522,11 @@ function CreateTab_Options_Other(panel)
         "FrameDrag.AltMoveKey", {"Shift", "Control", "Alt"})
     inverseDropdown:SetWidth(80)
     inverseDropdown:SetPoint("LEFT", dragAllCheckbox, "RIGHT", 90, 0)
-    factory:checkbox("Show Heal Predictions", {"See predictions on incoming healing", "Improved predictions if using SuperWoW"},
+    factory:checkbox("Show Heal Predictions", {"See predictions on incoming healing"},
         "UseHealPredictions", function() Puppeteer.UpdateAllIncomingHealing() end)
 
-    factory:checkbox("Out of Range Arrow", {"See an arrow when hovering over an out of range player"}, 
+    factory:checkbox("Out of Range Arrow", {"See an arrow when hovering over an out of range player"},
         "OutOfRangeArrow", function() Puppeteer.SetOutOfRangeArrowEnabled(PTOptions.OutOfRangeArrow) end)
-
-    factory:checkbox("(TWoW) LFT Auto Role", {"Automatically assign roles when joining LFT groups", 
-            "This functionality was tested for 1.18.0 and may break in future updates"}, "LFTAutoRole",
-            function() Puppeteer.SetLFTAutoRoleEnabled(PTOptions.LFTAutoRole) end)
 end
 
 function CreateTab_Options_Advanced(panel)
@@ -542,27 +537,8 @@ function CreateTab_Options_Advanced(panel)
 
     local TEXT_WIDTH = 370
 
-    local experimentsLabel = CreateLabel(container, "Experiments")
-        :SetPoint("TOP", container, "TOP", 0, -20)
-        :SetFontSize(14)
-    local experimentsInfo = CreateLabel(container, "Features which are not complete and/or need more testing. Use at your own risk.")
-        :SetWidth(TEXT_WIDTH)
-        :SetPoint("TOP", experimentsLabel, "BOTTOM", 0, -5)
-    layout:offset(0, -70)
-    factory:checkbox("(TWoW)\nAuto Role", {"If enabled, the Role Action menu shows auto role detection options", "Enabled Account-Wide"}, 
-        "Global.Experiments.AutoRole",
-        Puppeteer.InitRoleDropdown)
-    factory:checkbox("(SuperWoW)\nCast Icons", {"If enabled, you will see incoming casts over unit frames",
-            "This feature is highly subject to changes", "Requires SuperWoW!", "Enabled Per-Character"},
-        "Experiments.CastIcons",
-        function()
-            if PTHealPredict then
-                PTHealPredict.RemoveAllCastIcons()
-            end
-        end)
-
     local scriptsLabel = CreateLabel(container, "Load & Postload Scripts")
-        :SetPoint("TOP", container, "TOP", 0, -160)
+        :SetPoint("TOP", container, "TOP", 0, -20)
         :SetFontSize(14)
 
     local loadScriptInfo = CreateLabel(container, "The Load Script runs after profiles are initialized, but before UIs are created, "..
@@ -623,139 +599,6 @@ function CreateTab_Options_Advanced(panel)
         :OnClick(function()
             ReloadUI()
         end)
-end
-
-function CreateTab_Options_Mods(panel)
-    local container, scrollFrame = panel:CreateTab("Mods", true)
-    local layout = NewLabeledColumnLayout(container, {150, 310}, -20, 10)
-    local factory = NewComponentFactory(container, layout)
-    container.factory = factory
-
-    local TEXT_WIDTH = 370
-
-    local generalInfo = CreateLabel(container, "Some client mods enhance your experience with Puppeteer by enabling additional functionality.")
-        :SetWidth(TEXT_WIDTH)
-        :SetPoint("TOP", container, "TOP", 0, -10)
-
-    local modColors = {
-        ["SuperWoW"] = {1, 0.4, 0.4},
-        ["UnitXP SP3"] = {0.4, 0.4, 1},
-        ["Nampower"] = {0.4, 1, 0.4},
-        ["VanillaUtils"] = {1, 1, 1}
-    }
-    local detectedTexts = {
-        ["Detected"] = colorize("Mod Detected", 0.2, 1, 0.2).." - %s",
-        ["Not Detected"] = colorize("Mod Not Detected", 1, 0.2, 0.2),
-        ["Outdated"] = colorize("Mod Detected (Out of Date)", 1, 1, 0).." - %s"
-    }
-    local detectedLabelTexts = {}
-    for _, mod in ipairs({"SuperWoW", "UnitXP SP3", "Nampower"}) do
-        detectedLabelTexts[mod] = string.format(detectedTexts[util.GetModVersionState(mod)], util.GetModVersionText(mod))
-    end
-    local superWowLabel = CreateLabel(container, colorize("SuperWoW", modColors["SuperWoW"]))
-        :SetPoint("TOP", generalInfo, "BOTTOM", 0, -20)
-        :SetFontSize(14)
-    local superWowDetectedLabel = CreateLabel(container, detectedLabelTexts["SuperWoW"])
-        :SetPoint("TOP", superWowLabel, "BOTTOM", 0, -5)
-        :SetFontSize(10)
-        :SetFontFlags("OUTLINE")
-    
-    local superWowInfo = CreateLabel(container, "SuperWoW provides the following enhancements:\n\n"..
-        "• Enables tracking of many class buff and debuff timers\n"..
-        "• Enhances spell casting by directly casting on targets rather than split-second target switching tricks\n"..
-        "• Allows you to see accurate distance to other friendly players and NPCs\n"..
-        "• Mousing over unit frames properly sets your mouseover target\n"..
-        "• Shows incoming healing from players that do not have HealComm and predicts more accurate numbers\n"..
-        "• Add players/mobs to a separate Focus frame (By using the Focus action bind)")
-        :SetJustifyH("LEFT")
-        :SetWidth(TEXT_WIDTH)
-        :SetPoint("TOP", superWowDetectedLabel, "BOTTOM", 0, -10)
-    local superWowLink = CreateLinkEditbox(container, "https://github.com/balakethelock/SuperWoW")
-        :SetPoint("TOP", superWowInfo, "BOTTOM", 0, -5)
-        :SetSize(300, 20)
-    local superWowLinkLabel = CreateLabel(container, "Link:")
-        :SetPoint("RIGHT", superWowLink, "LEFT", -5, 0)
-
-    layout:ignoreNext()
-    local setMouseoverCheckbox = factory:checkbox("Set Mouseover", {"Requires SuperWoW Mod To Work", 
-        "If enabled, hovering over frames will set your mouseover target"}, "SetMouseover")
-        :SetPoint("TOP", superWowLink, "BOTTOM", 0, -10)
-    if not util.IsSuperWowPresent() then
-        setMouseoverCheckbox:Disable()
-    end
-
-    -- UnitXP SP3
-
-    local unitXPLabel = CreateLabel(container, colorize("UnitXP SP3", modColors["UnitXP SP3"]))
-        :SetPoint("TOP", setMouseoverCheckbox, "BOTTOM", 0, -20)
-        :SetFontSize(14)
-    local unitXPDetectedLabel = CreateLabel(container, detectedLabelTexts["UnitXP SP3"])
-        :SetPoint("TOP", unitXPLabel, "BOTTOM", 0, -5)
-        :SetFontSize(10)
-        :SetFontFlags("OUTLINE")
-    
-    local unitXPInfo = CreateLabel(container, "UnitXP SP3 provides the following enhancements:\n\n"..
-        "• Displays when units are out of line-of-sight\n"..
-        "• Allows you to see more accurate distance than SuperWoW and also see distance to enemies")
-        :SetJustifyH("LEFT")
-        :SetWidth(TEXT_WIDTH)
-        :SetPoint("TOP", unitXPDetectedLabel, "BOTTOM", 0, -10)
-    local unitXPLink = CreateLinkEditbox(container, "https://codeberg.org/konaka/UnitXP_SP3/wiki")
-        :SetPoint("TOP", unitXPInfo, "BOTTOM", 0, -5)
-        :SetSize(300, 20)
-    local unitXPLinkLabel = CreateLabel(container, "Link:")
-        :SetPoint("RIGHT", unitXPLink, "LEFT", -5, 0)
-
-    -- Nampower
-
-    local nampowerLabel = CreateLabel(container, colorize("Nampower", modColors["Nampower"]))
-        :SetPoint("TOP", unitXPLink, "BOTTOM", 0, -20)
-        :SetFontSize(14)
-    local nampowerDetectedLabel = CreateLabel(container, detectedLabelTexts["Nampower"])
-        :SetPoint("TOP", nampowerLabel, "BOTTOM", 0, -5)
-        :SetFontSize(10)
-        :SetFontFlags("OUTLINE")
-    
-    local nampowerInfo = CreateLabel(container, "Nampower provides the following enhancements:\n\n"..
-        "• Allows you to queue spell casts like in modern versions of WoW, drastically increasing casting efficiency\n"..
-        "• (Newer Versions) Enables tracking of additional buff/debuff timers")
-        :SetJustifyH("LEFT")
-        :SetWidth(TEXT_WIDTH)
-        :SetPoint("TOP", nampowerDetectedLabel, "BOTTOM", 0, -10)
-    local nampowerLink = CreateLinkEditbox(container, "https://gitea.com/avitasia/nampower")
-        :SetPoint("TOP", nampowerInfo, "BOTTOM", 0, -5)
-        :SetSize(300, 20)
-    local nampowerLinkLabel = CreateLabel(container, "Link:")
-        :SetPoint("RIGHT", nampowerLink, "LEFT", -5, 0)
-    
-    
-    -- local modFeaturesLabel = CreateLabel(container, "Mod Enhancements")
-    --     :SetPoint("TOP", nampowerLink, "BOTTOM", 0, -25)
-    --     :SetFontSize(14)
-    -- local lastLabel = modFeaturesLabel
-    -- for _, feature in ipairs(util.ModFeatures) do
-    --     if not feature.Hidden then
-    --         local modPrefix = ""
-    --         for _, provider in ipairs(feature.Providers) do
-    --             if string.len(modPrefix) > 0 then
-    --                 modPrefix = modPrefix.." or "
-    --             end
-    --             modPrefix = modPrefix..colorize(provider[1], modColors[provider[1]])
-    --         end
-    --         local desc = feature.Description
-    --         if not feature.ChosenProvider then
-    --             desc = colorize(desc, 0.5, 0.5, 0.5)
-    --         end
-    --         local label = CreateLabel(container, "• ["..modPrefix.."] "..desc)
-    --             :SetJustifyH("LEFT")
-    --             :SetWidth(TEXT_WIDTH)
-    --             :SetPoint("TOP", lastLabel, "BOTTOM", 0, -8)
-    --         lastLabel = label
-    --     end
-    -- end
-
-    
-    scrollFrame:UpdateScrollRange()
 end
 
 function CreateTab_Customize()
@@ -1142,19 +985,20 @@ end
 function CreateTab_About()
     local container = TabFrame:CreateTab("About")
 
-    local text = PTGuiLib.GetText(container, 
-            "Puppeteer Version "..Puppeteer.VERSION..
-            "\n\n\nPuppeteer Author: OldManAlpha\nTurtle Nordanaar IGN: Oldmana, Lowall, Jmdruid"..
-            "\n\nHealersMate Original Author: i2ichardt\nEmail: rj299@yahoo.com"..
+    local text = PTGuiLib.GetText(container,
+            "Puppeteer Version "..Puppeteer.VERSION.." (3.3.5a / Ascension port)"..
+            "\n\n\n3.3.5a Port: mhaslinsky"..
+            "\n\nPuppeteer Author (Vanilla 1.12): OldManAlpha"..
+            "\n\nHealersMate Original Author: i2ichardt"..
             "\n\nAdditional Contributors"..
-            "\nTurtle WoW Community: Answers to addon development questions"..
-            "\nShagu: Utility functions & providing a wealth of research material"..
-            "\nChatGPT: Utility functions"..
+            "\nAscension / 3.3.5a addon community: secure-template,"..
+            "\n  click-cast, and oUF reference implementations that"..
+            "\n  informed this port"..
             "\n\n\nCheck For Updates, Report Issues, Make Suggestions:\n",
             12)
         :SetPoint("TOP", container, "TOP", 0, -80)
 
-    CreateLinkEditbox(container, "https://github.com/OldManAlpha/Puppeteer")
+    CreateLinkEditbox(container, "https://github.com/mhaslinsky/Puppeteer-Ascension")
         :SetPoint("TOP", text, "BOTTOM", 0, -10)
         :SetSize(300, 20)
 end

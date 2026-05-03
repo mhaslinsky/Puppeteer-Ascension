@@ -145,8 +145,6 @@ function SetDefaults()
             ["AutoResurrect"] = util.ResurrectionSpells[util.GetClass("player")] ~= nil,
             ["UseHealPredictions"] = true,
             ["PVPFlagProtection"] = true,
-            ["SetMouseover"] = true,
-            ["LFTAutoRole"] = true, -- Turtle WoW
             ["TestUI"] = false,
             ["Hidden"] = false,
             ["HideWhileSolo"] = false,
@@ -167,8 +165,7 @@ function SetDefaults()
                 ["OnPostLoad"] = ""
             },
             ["Experiments"] = {
-                ["Enemy"] = false,
-                ["CastIcons"] = false
+                ["Enemy"] = false
             },
             ["OptionsVersion"] = OPTIONS_VERSION
         }
@@ -318,9 +315,7 @@ function SetDefaults()
     do
         local defaults = {
             ["ShowLoadMessage"] = true,
-            ["Experiments"] = {
-                ["AutoRole"] = false
-            },
+            ["Experiments"] = {},
             ["OptionsVersion"] = OPTIONS_VERSION
         }
         ApplyDefaults(PTGlobalOptions, defaults)
