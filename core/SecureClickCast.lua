@@ -50,6 +50,7 @@ local MAX_VARIANTS_PER_BUTTON = 5
 local keybindButtons = {}    -- ordered list of secure keybind buttons
 local keyToSlot = {}         -- key name -> {button=<frame>, variant=1..5}
 local overlaysByFrame = {}   -- unitFrame -> overlay button
+local auraButtonsByFrame = {} -- unitFrame -> array of aura SecureActionButtons
 local pendingRefreshOnRegen = false
 local initialized = false
 
@@ -136,45 +137,67 @@ local function forwardScript(overlay, original, scriptName)
     end)
 end
 
-local function refreshPerFrameAttrs(overlay, unit)
-    if InCombatLockdown() then
-        pendingRefreshOnRegen = true
-        return
-    end
-
-    overlay:SetAttribute("unit", unit)
+-- Wipe and rewrite the (unit, type<N>, spell<N>) attribute set for any frame
+-- that owns its unit (per-frame overlay or aura sub-button on the same frame).
+-- Bindings whose Type can't be securely dispatched (Menu, Role*, Script, Macro,
+-- Multi) leave their slot empty here; the OnClick fallback hook routes those
+-- clicks through to the legacy insecure handler.
+local function writeUnitAttrs(btn, unit, isHostile)
+    btn:SetAttribute("unit", unit)
 
     -- Wipe stale attrs across all 8 modifiers x 5 variants.
     for _, modName in ipairs(ALL_MODIFIERS) do
         local prefix = MODIFIER_PREFIXES[modName]
         for variant = 1, MAX_VARIANTS_PER_BUTTON do
-            overlay:SetAttribute(prefix .. "type" .. variant, nil)
-            overlay:SetAttribute(prefix .. "spell" .. variant, nil)
+            btn:SetAttribute(prefix .. "type" .. variant, nil)
+            btn:SetAttribute(prefix .. "spell" .. variant, nil)
         end
     end
 
-    -- Write secure attrs for each (modifier, mouseButton) combo. Frame overlay
-    -- owns its unit attribute so we can use the dedicated secure types directly
-    -- (no [@mouseover] indirection needed). The hostile/friendly choice is
-    -- hard-coded to the frame's faction; mirrors UnitFrame_OnClick's routing.
-    -- Bindings whose Type can't be securely dispatched (Menu, Role*, Script,
-    -- Macro, Multi) leave their slot empty here; the overlay's OnClick fallback
-    -- below routes those clicks to the legacy insecure handler.
-    local isHostile = UnitCanAttack("player", unit)
     local side = isHostile and "Hostile" or "Friendly"
-
     for _, modName in ipairs(ALL_MODIFIERS) do
         local prefix = MODIFIER_PREFIXES[modName]
         for buttonName, variant in pairs(MOUSE_BUTTON_TO_VARIANT) do
             local spec = bindingToFrameSpec(GetBinding(side, modName, buttonName))
             if spec then
-                overlay:SetAttribute(prefix .. "type" .. variant, spec.type)
+                btn:SetAttribute(prefix .. "type" .. variant, spec.type)
                 if spec.spell then
-                    overlay:SetAttribute(prefix .. "spell" .. variant, spec.spell)
+                    btn:SetAttribute(prefix .. "spell" .. variant, spec.spell)
                 end
             end
         end
     end
+end
+
+-- Install a HookScript that fires AFTER the secure template's OnClick. If the
+-- (modifier, variant) slot has a secure type set, the cast already happened --
+-- skip to avoid double-firing. Otherwise fall through to the legacy insecure
+-- handler so unsupported binding types (Menu, Role*, Script, Macro, Multi)
+-- still work OOC. Must use HookScript, not SetScript -- see Bug 7.
+local function installFallbackHook(btn, unitFrame)
+    btn:HookScript("OnClick", function()
+        local clickName = arg1
+        if not clickName then return end
+        local variant = MOUSE_BUTTON_TO_VARIANT[clickName]
+        local prefix = ""
+        local mod = util.GetKeyModifier()
+        if mod and mod ~= "None" then
+            prefix = MODIFIER_PREFIXES[mod] or ""
+        end
+        if variant and btn:GetAttribute(prefix .. "type" .. variant) then
+            return  -- already handled by secure dispatch
+        end
+        local unit = unitFrame:GetUnit()
+        if unit then UnitFrame_OnClick(clickName, unit, unitFrame) end
+    end)
+end
+
+local function refreshPerFrameAttrs(overlay, unit)
+    if InCombatLockdown() then
+        pendingRefreshOnRegen = true
+        return
+    end
+    writeUnitAttrs(overlay, unit, UnitCanAttack("player", unit))
 end
 
 function SecureClickCast.AttachOverlay(unitFrame)
@@ -195,36 +218,56 @@ function SecureClickCast.AttachOverlay(unitFrame)
     forwardScript(overlay, existing, "OnMouseDown")
     forwardScript(overlay, existing, "OnMouseUp")
 
-    -- OnClick fires AFTER the secure dispatch on SecureActionButton. For binding
-    -- types that have no secure equivalent (Menu, Role*, Script, Macro, Multi),
-    -- the secure dispatch was a no-op and we fall through to the legacy insecure
-    -- handler so those clicks still work OOC. For bindings that DID dispatch
-    -- securely, the type<N> attr is set, so we skip to avoid double-firing.
-    overlay:HookScript("OnClick", function()
-        local button = arg1
-        if not button then return end
-        local variant = MOUSE_BUTTON_TO_VARIANT[button]
-        local prefix = ""
-        local mod = util.GetKeyModifier()
-        if mod and mod ~= "None" then
-            prefix = MODIFIER_PREFIXES[mod] or ""
-        end
-        if variant and overlay:GetAttribute(prefix .. "type" .. variant) then
-            return  -- already handled by secure dispatch
-        end
-        local unit = unitFrame:GetUnit()
-        if unit then UnitFrame_OnClick(button, unit, unitFrame) end
-    end)
+    installFallbackHook(overlay, unitFrame)
 
     overlaysByFrame[unitFrame] = overlay
 
     refreshPerFrameAttrs(overlay, unitFrame:GetUnit())
 end
 
+-- Slice 2: aura icons ride on top of self.button (parented there for hover) so
+-- their buttons capture clicks before the per-frame secure overlay can. Make
+-- those buttons themselves SecureActionButtons that mirror the overlay's attrs
+-- (same unit, same per-modifier type/spell), so a click on an aura icon casts
+-- the same spell as a click on the underlying unit frame area.
+function SecureClickCast.AttachAuraButton(unitFrame, button)
+    if not SecureClickCast.IsEnabled() then return end
+    if not button then return end
+
+    local list = auraButtonsByFrame[unitFrame]
+    if not list then
+        list = {}
+        auraButtonsByFrame[unitFrame] = list
+    end
+    table.insert(list, button)
+
+    installFallbackHook(button, unitFrame)
+
+    if not InCombatLockdown() then
+        local unit = unitFrame:GetUnit()
+        if unit then writeUnitAttrs(button, unit, UnitCanAttack("player", unit)) end
+    else
+        pendingRefreshOnRegen = true
+    end
+end
+
 function SecureClickCast.RefreshOverlay(unitFrame)
     local overlay = overlaysByFrame[unitFrame]
     if not overlay then return end
-    refreshPerFrameAttrs(overlay, unitFrame:GetUnit())
+    if InCombatLockdown() then
+        pendingRefreshOnRegen = true
+        return
+    end
+    local unit = unitFrame:GetUnit()
+    if not unit then return end
+    local isHostile = UnitCanAttack("player", unit)
+    writeUnitAttrs(overlay, unit, isHostile)
+    local auras = auraButtonsByFrame[unitFrame]
+    if auras then
+        for _, btn in ipairs(auras) do
+            writeUnitAttrs(btn, unit, isHostile)
+        end
+    end
 end
 
 
