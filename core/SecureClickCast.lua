@@ -63,40 +63,65 @@ function SecureClickCast.IsEnabled()
 end
 
 
--- ---------- Macrotext synthesis ----------
+-- ---------- Binding translation ----------
 
-local function bindingSpellName(binding)
-    if not binding or binding.Type ~= "SPELL" then return nil end
-    local data = binding.Data
-    if not data or data == "" then return nil end
-    return data
+-- Action binding names that map cleanly to native secure dispatch (no addon Lua).
+-- Anything not listed here (Menu, Role*, etc.) needs the insecure OnClick fallback
+-- and won't work for protected calls in combat.
+local SECURE_ACTIONS = {
+    ["Target"] = "target",
+    ["Assist"] = "assist",
+    ["Follow"] = "follow",
+}
+
+-- Build a macro line for one binding targeting [@mouseover<,help/harm>]. Returns
+-- nil if the binding can't be expressed via macrotext (Menu, Role*, etc.).
+-- modifierClause is "" or ",help,nodead" or ",harm,nodead".
+local function bindingToMacroLine(binding, modifierClause)
+    if not binding or not binding.Type or not binding.Data or binding.Data == "" then
+        return nil
+    end
+    if binding.Type == "SPELL" then
+        return "/cast [@mouseover" .. modifierClause .. "] " .. binding.Data
+    elseif binding.Type == "ACTION" then
+        local action = SECURE_ACTIONS[binding.Data]
+        if not action then return nil end
+        return "/" .. action .. " [@mouseover" .. modifierClause .. "]"
+    end
+    return nil
 end
 
--- Synthesize a single-line [@mouseover,help/harm] macrotext for one (key, modifier)
--- slot. Returns nil if neither friendly nor hostile is a SPELL binding.
--- Honors UseFriendlyForHostile (mirrors GetBinding's behavior).
+-- Synthesize a multi-line macrotext for one (key, modifier) slot covering both
+-- friendly and hostile bindings. Returns nil if neither side is expressible.
 local function buildMacrotextForSlot(modifierName, buttonName)
     local friendly = GetBinding("Friendly", modifierName, buttonName)
     local hostile = GetBinding("Hostile", modifierName, buttonName)
 
-    local friendlySpell = bindingSpellName(friendly)
-    local hostileSpell = bindingSpellName(hostile)
+    local lines = {}
+    local fLine = bindingToMacroLine(friendly, ",help,nodead")
+    local hLine = bindingToMacroLine(hostile, ",harm,nodead")
+    if fLine then table.insert(lines, fLine) end
+    if hLine then table.insert(lines, hLine) end
 
-    if not friendlySpell and not hostileSpell then
+    if table.getn(lines) == 0 then return nil end
+    return table.concat(lines, "\n")
+end
+
+-- For a per-frame overlay (unit baked in via the unit attribute), translate one
+-- binding into a {type=..., spell=...} or {type=..., macrotext=...} spec to be
+-- written to type<N> / spell<N> / macrotext<N> attributes. Returns nil if the
+-- binding can't be securely dispatched (caller should fall through to insecure).
+local function bindingToFrameSpec(binding)
+    if not binding or not binding.Type or not binding.Data or binding.Data == "" then
         return nil
     end
-    if friendlySpell and hostileSpell and friendlySpell == hostileSpell then
-        return "/cast [@mouseover,nodead] " .. friendlySpell
+    if binding.Type == "SPELL" then
+        return {type = "spell", spell = binding.Data}
+    elseif binding.Type == "ACTION" then
+        local action = SECURE_ACTIONS[binding.Data]
+        if action then return {type = action} end
     end
-
-    local parts = {}
-    if friendlySpell then
-        table.insert(parts, "[@mouseover,help,nodead] " .. friendlySpell)
-    end
-    if hostileSpell then
-        table.insert(parts, "[@mouseover,harm,nodead] " .. hostileSpell)
-    end
-    return "/cast " .. table.concat(parts, "; ")
+    return nil
 end
 
 
@@ -128,22 +153,25 @@ local function refreshPerFrameAttrs(overlay, unit)
         end
     end
 
-    -- Write SPELL bindings for each (modifier, mouseButton) combo.
-    -- Frame buttons own their unit so we use type=spell directly (no [@mouseover]).
-    -- The hostile/friendly choice is hard-coded to the frame's unit's faction here:
-    -- if the frame represents a friendly unit, only the Friendly bindings apply
-    -- (and vice versa). Mirrors how UnitFrame_OnClick already routes.
+    -- Write secure attrs for each (modifier, mouseButton) combo. Frame overlay
+    -- owns its unit attribute so we can use the dedicated secure types directly
+    -- (no [@mouseover] indirection needed). The hostile/friendly choice is
+    -- hard-coded to the frame's faction; mirrors UnitFrame_OnClick's routing.
+    -- Bindings whose Type can't be securely dispatched (Menu, Role*, Script,
+    -- Macro, Multi) leave their slot empty here; the overlay's OnClick fallback
+    -- below routes those clicks to the legacy insecure handler.
     local isHostile = UnitCanAttack("player", unit)
     local side = isHostile and "Hostile" or "Friendly"
 
     for _, modName in ipairs(ALL_MODIFIERS) do
         local prefix = MODIFIER_PREFIXES[modName]
         for buttonName, variant in pairs(MOUSE_BUTTON_TO_VARIANT) do
-            local binding = GetBinding(side, modName, buttonName)
-            local spell = bindingSpellName(binding)
-            if spell then
-                overlay:SetAttribute(prefix .. "type" .. variant, "spell")
-                overlay:SetAttribute(prefix .. "spell" .. variant, spell)
+            local spec = bindingToFrameSpec(GetBinding(side, modName, buttonName))
+            if spec then
+                overlay:SetAttribute(prefix .. "type" .. variant, spec.type)
+                if spec.spell then
+                    overlay:SetAttribute(prefix .. "spell" .. variant, spec.spell)
+                end
             end
         end
     end
@@ -167,6 +195,27 @@ function SecureClickCast.AttachOverlay(unitFrame)
     forwardScript(overlay, existing, "OnMouseDown")
     forwardScript(overlay, existing, "OnMouseUp")
 
+    -- OnClick fires AFTER the secure dispatch on SecureActionButton. For binding
+    -- types that have no secure equivalent (Menu, Role*, Script, Macro, Multi),
+    -- the secure dispatch was a no-op and we fall through to the legacy insecure
+    -- handler so those clicks still work OOC. For bindings that DID dispatch
+    -- securely, the type<N> attr is set, so we skip to avoid double-firing.
+    overlay:SetScript("OnClick", function()
+        local button = arg1
+        if not button then return end
+        local variant = MOUSE_BUTTON_TO_VARIANT[button]
+        local prefix = ""
+        local mod = util.GetKeyModifier()
+        if mod and mod ~= "None" then
+            prefix = MODIFIER_PREFIXES[mod] or ""
+        end
+        if variant and overlay:GetAttribute(prefix .. "type" .. variant) then
+            return  -- already handled by secure dispatch
+        end
+        local unit = unitFrame:GetUnit()
+        if unit then PT.UnitFrame_OnClick(button, unit, unitFrame) end
+    end)
+
     overlaysByFrame[unitFrame] = overlay
 
     refreshPerFrameAttrs(overlay, unitFrame:GetUnit())
@@ -185,6 +234,26 @@ local function newKeybindButton(index)
     local btn = CreateFrame("Button", "PuppeteerKeybindButton" .. index, UIParent,
         "SecureActionButtonTemplate")
     btn:Hide()
+    -- Fallback: if no macrotext was set for the (variant, modifier) combo (e.g.
+    -- the user bound an unsupported Action like Menu or Role to this key), fire
+    -- the legacy insecure handler against the currently-hovered Puppeteer frame.
+    -- Won't work over non-Puppeteer frames since PT.Mouseover isn't set there.
+    btn:SetScript("OnClick", function()
+        local clickName = arg1
+        if not clickName then return end
+        local variant = MOUSE_BUTTON_TO_VARIANT[clickName]
+        local prefix = ""
+        local mod = util.GetKeyModifier()
+        if mod and mod ~= "None" then
+            prefix = MODIFIER_PREFIXES[mod] or ""
+        end
+        if variant and btn:GetAttribute(prefix .. "type" .. variant) then
+            return  -- already handled by secure dispatch
+        end
+        if PT.Mouseover and PT.MouseoverFrame then
+            PT.UnitFrame_OnClick(clickName, PT.Mouseover, PT.MouseoverFrame)
+        end
+    end)
     return btn
 end
 
