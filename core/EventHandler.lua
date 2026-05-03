@@ -130,6 +130,13 @@ RegisterEventHandler("PLAYER_LOGOUT", function()
     RemoveOverrideBindings()
     PuppeteerSettings.SaveFramePositions()
 end)
+RegisterEventHandler("PLAYER_REGEN_DISABLED", function()
+    -- Auto-close settings if combat starts mid-edit: binding writes are combat-protected and would silently drop.
+    if PTSettingsGui and PTSettingsGui.TabFrame and PTSettingsGui.TabFrame:IsShown() then
+        PTSettingsGui.TabFrame:Hide()
+        Puppeteer.Info("Settings closed: edits aren't allowed during combat.")
+    end
+end)
 
 local GetKeyModifier = util.GetKeyModifier
 local keyListener = CreateFrame("Frame", "PTTooltipKeyListener")

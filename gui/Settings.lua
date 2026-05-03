@@ -23,6 +23,16 @@ function Init()
         end
     end
 
+    -- Refuse to open in combat: binding-edit writes secure attributes that combat-lockdown silently drops.
+    local origShow = TabFrame:GetHandle().Show
+    TabFrame:GetHandle().Show = function(self)
+        if InCombatLockdown() then
+            Puppeteer.Info("Settings can't be opened during combat.")
+            return
+        end
+        origShow(self)
+    end
+
     if PTOptions.Debug2 then
         TabFrame:Show()
     end
