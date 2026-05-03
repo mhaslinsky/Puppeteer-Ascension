@@ -6,7 +6,90 @@ local SearchSpells = util.SearchSpells
 local SearchMacros = util.SearchMacros
 local SearchItems = util.SearchItems
 
-local bindHelper = PTGuiLib.Get("dropdown", UIParent)
+-- Simple autocomplete popover. Replaces the prior PTGuiDropdown-based bindHelper,
+-- which routed through UIDropDownMenu's "MENU" mode and silently failed to display
+-- on 3.3.5a (ToggleDropDownMenu set UIDROPDOWNMENU_OPEN_MENU but DropDownList1
+-- never became visible -- the wrapper layer was too tangled to unblock cleanly).
+-- One singleton popover, anchored under whichever editbox triggered it.
+local POPOVER_ROW_HEIGHT = 16
+local POPOVER_PADDING = 4
+local POPOVER_MAX_VISIBLE = 10
+local autocompletePopover
+
+local function getAutocompletePopover()
+    if autocompletePopover then return autocompletePopover end
+    local popover = CreateFrame("Frame", "PTAutocompletePopover", UIParent)
+    popover:SetFrameStrata("TOOLTIP")
+    popover:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 12,
+        insets = {left = 2, right = 2, top = 2, bottom = 2},
+    })
+    popover:SetBackdropColor(0, 0, 0, 0.92)
+    popover.rows = {}
+    popover:Hide()
+    autocompletePopover = popover
+    return popover
+end
+
+local function showAutocompletePopover(anchorFrame, items, onSelect)
+    local popover = getAutocompletePopover()
+    local count = math.min(table.getn(items), POPOVER_MAX_VISIBLE)
+    if count == 0 then
+        popover:Hide()
+        return
+    end
+
+    local maxWidth = 80
+    for i = 1, count do
+        local row = popover.rows[i]
+        if not row then
+            row = CreateFrame("Button", nil, popover)
+            row:SetHeight(POPOVER_ROW_HEIGHT)
+            row:RegisterForClicks("LeftButtonDown")
+            local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            text:SetPoint("LEFT", row, "LEFT", 6, 0)
+            text:SetPoint("RIGHT", row, "RIGHT", -6, 0)
+            text:SetJustifyH("LEFT")
+            row.text = text
+            local hl = row:CreateTexture(nil, "BACKGROUND")
+            hl:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+            hl:SetBlendMode("ADD")
+            hl:SetAllPoints(row)
+            hl:Hide()
+            row.hl = hl
+            row:SetScript("OnEnter", function(self) self.hl:Show() end)
+            row:SetScript("OnLeave", function(self) self.hl:Hide() end)
+            popover.rows[i] = row
+        end
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", popover, "TOPLEFT", POPOVER_PADDING, -((i - 1) * POPOVER_ROW_HEIGHT) - POPOVER_PADDING)
+        row:SetPoint("RIGHT", popover, "RIGHT", -POPOVER_PADDING, 0)
+        local item = items[i]
+        row.text:SetText(item)
+        row:SetScript("OnClick", function() onSelect(item) end)
+        row:Show()
+        local w = row.text:GetStringWidth() + 24
+        if w > maxWidth then maxWidth = w end
+    end
+
+    for i = count + 1, table.getn(popover.rows) do
+        popover.rows[i]:Hide()
+    end
+
+    popover:SetWidth(maxWidth + POPOVER_PADDING * 2)
+    popover:SetHeight(count * POPOVER_ROW_HEIGHT + POPOVER_PADDING * 2)
+    popover:ClearAllPoints()
+    popover:SetPoint("TOPLEFT", anchorFrame, "BOTTOMLEFT", 0, -2)
+    popover:Show()
+end
+
+local function hideAutocompletePopover()
+    if autocompletePopover then
+        autocompletePopover:Hide()
+    end
+end
 
 function PTSpellLine:New()
     local obj = setmetatable({}, self)
@@ -252,34 +335,36 @@ function PTSpellLine:ApplySearchableEditbox(bindType, searchFunc, searchAtLength
             binding.Type = bindType
         end
         if string.len(binding.Data) < (searchAtLength or 2) then
+            hideAutocompletePopover()
             return
         end
         local searchResults = searchFunc(binding.Data)
         if table.getn(searchResults) == 1 and searchResults[1] == binding.Data then
-            bindHelper:SetToggleState(false)
+            hideAutocompletePopover()
             return
         end
-        bindHelper:SetSimpleOptions(searchResults, function(option)
-            return {
-                text = option,
-                notCheckable = true,
-                func = function(option)
-                    binding.Data = option.text
-                    PTSettingsGui.UpdateUnsavedChanges()
-                    self:Update()
-                end
-            }
+        showAutocompletePopover(self:GetContentEditbox():GetHandle(), searchResults, function(selected)
+            binding.Data = selected
+            self:GetContentEditbox():SetText(selected)
+            PTSettingsGui.UpdateUnsavedChanges()
+            hideAutocompletePopover()
+            self:GetContentEditbox():GetHandle():ClearFocus()
+            self:Update()
         end)
-        bindHelper:SetToggleState(false)
-        bindHelper:SetToggleState(true, self:GetContentEditbox():GetHandle(), 0, 0)
-        bindHelper:SetKeepOpen(true)
     end)
     self:GetContentEditbox():SetScript("OnEditFocusGained", function(self)
         self:HighlightText()
         self.hasFocus = true
     end)
     self:GetContentEditbox():SetScript("OnEditFocusLost", function(self)
-        bindHelper:SetToggleState(false)
+        -- Defer hide one frame so a click on a popover row registers before we yank it.
+        if autocompletePopover and autocompletePopover:IsShown() then
+            local f = CreateFrame("Frame")
+            f:SetScript("OnUpdate", function(self)
+                self:SetScript("OnUpdate", nil)
+                hideAutocompletePopover()
+            end)
+        end
         self:HighlightText(0, 0)
         self.hasFocus = nil
     end)
