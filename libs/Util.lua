@@ -3,7 +3,7 @@
 PTUtil = {}
 
 function PTUtil.SetEnvironment(t, index)
-    setmetatable(t, {__index = index or PTUnitProxy or getfenv(1)})
+    setmetatable(t, {__index = index or getfenv(1)})
     setfenv(2, t)
 end
 
@@ -266,9 +266,12 @@ RaidPetUnits = {}
 for i = 1, MAX_RAID_MEMBERS do
     RaidPetUnits[i] = "raidpet"..i
 end
-CustomUnits = PTUnitProxy and PTUnitProxy.AllCustomUnits or {}
-CustomUnitsSet = PTUnitProxy and PTUnitProxy.AllCustomUnitsSet or {}
-FocusUnits = PTUnitProxy and PTUnitProxy.CustomUnitsMap["focus"] or {}
+-- Phase 4: custom-unit (focus2..N, enemy1..N) arrays removed with UnitProxy delete.
+-- Kept as empty stubs because Puppeteer.lua and PTUnitFrame.lua read from these globals;
+-- a future Task A pass can clean those readers up alongside the dual-key collapse.
+CustomUnits = {}
+CustomUnitsSet = {}
+FocusUnits = {}
 
 local unitArrays = {PartyUnits, PetUnits, RaidUnits, RaidPetUnits, TargetUnits}
 AllUnits = {}
@@ -280,26 +283,6 @@ end
 AllRealUnits = {}
 for i, unit in ipairs(AllUnits) do
     AllRealUnits[i] = unit
-end
-if PTUnitProxy then
-    for _, unit in ipairs(CustomUnits) do
-        table.insert(AllUnits, unit)
-    end
-    PTUnitProxy.RegisterUpdateListener(function()
-        local i = 1
-        for _, unit in ipairs(AllRealUnits) do
-            AllUnits[i] = unit
-            i = i + 1
-        end
-        for _, unit in ipairs(CustomUnits) do
-            AllUnits[i] = unit
-            i = i + 1
-        end
-        ClearTable(AllUnitsSet)
-        for k, v in pairs(ToSet(AllUnits)) do
-            AllUnitsSet[k] = v
-        end
-    end)
 end
 
 local assetsPath = "Interface\\AddOns\\Puppeteer\\assets\\"

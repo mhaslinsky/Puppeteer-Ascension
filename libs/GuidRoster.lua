@@ -1,9 +1,5 @@
 -- A utility to map GUIDs to unit tokens.
 --
--- SuperWoW's "custom units" (focus2..N) live in PTUnitProxy and remain
--- SuperWoW-only; GuidRoster does NOT track them — ResolveUnitGuid falls back
--- to PTUnitProxy when present.
---
 -- This file owns no event registrations: callers drive
 -- ResetRoster/PopulateRoster/SetUnitGuid (CheckGroup on group changes,
 -- the PLAYER_TARGET_CHANGED handler).
@@ -30,13 +26,6 @@ function PopulateRoster()
         local guid = UnitGUID(unit)
         if guid then
             AddUnit(guid, unit)
-        end
-    end
-    if PTUnitProxy and PTUnitProxy.GUIDCustomUnitMap then
-        for guid, units in pairs(PTUnitProxy.GUIDCustomUnitMap) do
-            for _, unit in ipairs(units) do
-                AddUnit(guid, unit)
-            end
         end
     end
 end
@@ -74,12 +63,10 @@ function GetUnitGuid(unit)
     return UnitGUID(unit)
 end
 
--- Resolves the GUID of a unit token, custom unit, or returns the input if it
--- already looks like a GUID (SuperWoW-era callers pass GUIDs as units).
+-- Resolves the GUID of a unit token, or returns the input if it already looks
+-- like a GUID (SuperWoW-era callers pass GUIDs as units).
 function ResolveUnitGuid(unit)
-    local guid = UnitGUID(unit)
-        or (PTUnitProxy and PTUnitProxy.CustomUnitGUIDMap and PTUnitProxy.CustomUnitGUIDMap[unit])
-        or unit
+    local guid = UnitGUID(unit) or unit
     if guid ~= "target" then
         return guid
     end

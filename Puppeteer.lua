@@ -73,8 +73,7 @@ PTUnitFrames = {}
 -- Key: Unit frame group name | Value: The group
 UnitFrameGroups = {}
 
-CustomUnitGUIDMap = PTUnitProxy and PTUnitProxy.CustomUnitGUIDMap or {}
-GUIDCustomUnitMap = PTUnitProxy and PTUnitProxy.GUIDCustomUnitMap or {}
+-- Phase 4: CustomUnitGUIDMap / GUIDCustomUnitMap removed with UnitProxy delete.
 
 
 CurrentlyInRaid = false
@@ -444,9 +443,7 @@ function ConvertSpellsToBindings(spells)
         ["ROLE: TANK"] = "Role: Tank",
         ["ROLE: HEALER"] = "Role: Healer",
         ["ROLE: DAMAGE"] = "Role: Damage",
-        ["ROLE: NONE"] = "Role: None",
-        ["FOCUS"] = "Focus",
-        ["PROMOTE FOCUS"] = "Promote Focus"
+        ["ROLE: NONE"] = "Role: None"
     }
     local loadout = CreateEmptyBindingsLoadout()
     for target, modifiers in pairs(spells) do
@@ -520,51 +517,8 @@ function SetPartyFramesEnabled(enabled)
     end
 end
 
-function ToggleFocusUnit(unit)
-    if PTUnitProxy.IsUnitUnitType(unit, "focus") then
-        if not PTUnitProxy.CustomUnitsSetMap["focus"][unit] then
-            return -- Do not toggle focus if user is clicking on a UI that isn't the focus UI
-        end
-        UnfocusUnit(unit)
-    else
-        FocusUnit(unit)
-    end
-end
-
-function FocusUnit(unit)
-    local guid = PTGuidRoster.ResolveUnitGuid(unit)
-    if not guid or PTUnitProxy.IsGuidUnitType(guid, "focus") then
-        return
-    end
-
-    PTUnitProxy.SetGuidUnitType(guid, "focus")
-    PlaySound("GAMETARGETHOSTILEUNIT")
-end
-
-function UnfocusUnit(unit)
-    local guid = PTGuidRoster.ResolveUnitGuid(unit)
-    if not guid then
-        return
-    end
-    local focusUnit = PTUnitProxy.GetCurrentUnitOfType(guid, "focus")
-    if not focusUnit then
-        return
-    end
-    PTUnitProxy.SetCustomUnitGuid(focusUnit, nil)
-    PlaySound("INTERFACESOUND_LOSTTARGETUNIT")
-end
-
-function PromoteFocus(unit)
-    local guid = PTGuidRoster.ResolveUnitGuid(unit)
-    if not guid then
-        return
-    end
-    PTUnitProxy.PromoteGuidUnitType(guid, "focus")
-end
-
-function CycleFocus(onlyAttackable)
-    PTUnitProxy.CycleUnitType("focus", onlyAttackable)
-end
+-- Phase 4: ToggleFocusUnit / FocusUnit / UnfocusUnit / PromoteFocus / CycleFocus
+-- removed with UnitProxy delete (multi-focus feature cut for v2.0).
 
 local emptySpell = {}
 function UnitFrame_OnClick(button, unit, unitFrame)
@@ -702,7 +656,7 @@ function CheckTarget()
 end
 
 function IsRelevantUnit(unit)
-    return AllUnitsSet[unit] ~= nil or GUIDCustomUnitMap[unit]
+    return AllUnitsSet[unit] ~= nil
 end
 
 function Info(msg)

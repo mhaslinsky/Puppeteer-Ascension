@@ -55,35 +55,9 @@ function CreateCaches()
     end
 end
 
-function UpdateGuidCaches()
-    local cached = PTUnit.Cached
-    local prevCached = PTUtil.CloneTableCompost(cached)
-    for _, unit in ipairs(AllRealUnits) do
-        local exists, guid = UnitExists(unit)
-        if exists then
-            if not cached[guid] then
-                PTUnit:New(guid)
-                Puppeteer.EvaluateTracking(unit, true)
-            end
-            prevCached[guid] = nil
-        end
-    end
-    for guid, units in pairs(PTUnitProxy.GUIDCustomUnitMap) do
-        if not cached[guid] then
-            PTUnit:New(guid)
-            for _, unit in ipairs(units) do
-                Puppeteer.EvaluateTracking(unit, true)
-            end
-        end
-        prevCached[guid] = nil
-    end
-    for garbageGuid, cache in pairs(prevCached) do
-        cache:Dispose()
-        cached[garbageGuid] = nil
-    end
-end
+-- Phase 4: UpdateGuidCaches removed with UnitProxy. The PTUnit cache is keyed by
+-- unit-id on Ascension; Task A will collapse to GUID-only with a token resolver.
 
--- Likely never needed to be called when using GUIDs
 function UpdateAllUnits()
     for _, cache in pairs(PTUnit.Cached) do
         cache:UpdateAll()

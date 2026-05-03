@@ -371,14 +371,6 @@ local function getGuidFromLogName(name)
     if unit then
         return UnitGUID(unit)
     end
-    -- SuperWoW custom-units fallback
-    if PTUnitProxy and PTUnitProxy.CustomUnitGUIDMap then
-        for _, guid in pairs(PTUnitProxy.CustomUnitGUIDMap) do
-            if UnitName(guid) == name then
-                return guid
-            end
-        end
-    end
 end
 
 local function getSelfGuid()

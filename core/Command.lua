@@ -34,12 +34,7 @@ SlashCmdList["PUPPETEER"] = function(args)
             end
         end
         Puppeteer.CheckGroup()
-        if not PTOptions.TestUI and PTUnitProxy then
-            for _, type in ipairs(PTUnitProxy.CustomUnitTypes) do
-                PTUnitProxy.UpdateUnitTypeFrames(type)
-            end
-        end
-        Puppeteer.Info("UI Testing is now "..(not PTOptions.TestUI and 
+        Puppeteer.Info("UI Testing is now "..(not PTOptions.TestUI and
             PTUtil.Colorize("off", 1, 0.6, 0.6) or PTUtil.Colorize("on", 0.6, 1, 0.6))..".")
     elseif args == "toggle" then
         PTOptions.Hidden = not PTOptions.Hidden

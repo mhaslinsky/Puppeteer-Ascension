@@ -1671,18 +1671,9 @@ function PTUnitFrame:GetRole()
 end
 
 function PTUnitFrame:HasAggro()
-    local unit = self:GetUnit()
-    if self.isCustomUnit then
-        if not self.guidUnit then
-            return false
-        end
-        unit = PTUnitProxy.ResolveCustomUnit(self.guidUnit)
-        if not unit then
-            return false
-        end
-    end
     -- Phase 2b: Banzai ripped. Native UnitThreatSituation returns 0–3 (nil if no threat info).
-    local status = UnitThreatSituation(unit)
+    -- Phase 4: custom-unit (focus2..N) branch removed with UnitProxy delete.
+    local status = UnitThreatSituation(self:GetUnit())
     return status and status > 0
 end
 

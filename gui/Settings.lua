@@ -761,7 +761,7 @@ function CreateTab_Customize()
         :SetFontSize(14)
     
 
-    local preferredFrameOrder = {"Party", "Pets", "Raid", "Raid Pets", "Target", "Focus"}
+    local preferredFrameOrder = {"Party", "Pets", "Raid", "Raid Pets", "Target"}
     local frameDropdown = CreateLabeledDropdown(frameStyleContainer, "Configure Frame", "The frame to edit the attributes of")
         :SetWidth(150)
         :SetDynamicOptions(function(addOption, level, args)
@@ -808,10 +808,6 @@ function CreateTab_Customize()
             func = function(self, gui)
                 local selectedFrame = frameDropdown:GetText()
                 PTOptions.ChosenProfiles[selectedFrame] = self.text
-
-                if selectedFrame == "Focus" and not util.IsSuperWowPresent() then
-                    return
-                end
 
                 -- Here's some probably buggy profile hotswapping
                 local group = Puppeteer.UnitFrameGroups[selectedFrame]

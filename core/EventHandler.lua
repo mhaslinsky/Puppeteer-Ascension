@@ -89,9 +89,6 @@ RegisterEventHandler("PLAYER_TARGET_CHANGED", function()
     end
     local exists = UnitExists("target")
     local guid = UnitGUID("target")
-    if util.IsSuperWowPresent() then
-        PTUnit.UpdateGuidCaches()
-    end
 
     PTUnit.Get("target"):UpdateAll()
     if GuidRoster then

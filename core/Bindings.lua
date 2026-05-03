@@ -588,7 +588,7 @@ function RunBinding_Script(binding, unit, unitFrame)
         setfenv(func, BindingEnvironment)
         BindingScriptCache[scriptString] = func
     end
-    BindingEnvironment.PTScriptUnit = PTUnitProxy and PTUnitProxy.CustomUnitGUIDMap[unit] or unit
+    BindingEnvironment.PTScriptUnit = unit
     BindingEnvironment.PTScriptUnitUnresolved = unit
     BindingEnvironment.PTScriptUnitFrame = unitFrame
     RunTargetedAction(binding, unit, setupTargetedScript(BindingScriptCache[scriptString]))

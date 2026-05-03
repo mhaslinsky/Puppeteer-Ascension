@@ -13,7 +13,9 @@ libs\LibStub\LibStub.lua
 # replaced with plain {} allocation; aggro via UnitThreatSituation; HealComm stubbed
 # pending LibHealComm-4.0 wire-up in Phase 3.
 
-libs\UnitProxy.lua
+# Phase 4: UnitProxy.lua removed. Multi-focus (focus2..focusN) was a SuperWoW-only
+# custom-unit subsystem; native 3.3.5a focus is single-slot. Multi-focus deferred
+# to v2.1; native single-slot focus restoration is part of that work.
 libs\Util.lua
 
 locale\Locale.lua
