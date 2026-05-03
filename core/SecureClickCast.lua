@@ -48,7 +48,8 @@ local VARIANT_TO_VIRTUAL = {
 local MAX_VARIANTS_PER_BUTTON = 5
 
 local keybindButtons = {}    -- ordered list of secure keybind buttons
-local keyToSlot = {}         -- key name -> {button=<frame>, variant=1..5}
+local keyToSlot = {}         -- key name -> {button=<frame>, variant=1..5, hasBinding=bool}
+local lastBoundKeys = {}     -- set of keys we previously SetBindingClick'd so we know what to unbind on refresh
 local overlaysByFrame = {}   -- unitFrame -> overlay button
 local pendingRefreshOnRegen = false
 local initialized = false
@@ -302,7 +303,10 @@ local function refreshKeybindAttrs()
         end
     end
 
-    -- Write per-(key, modifier) macrotexts.
+    -- Write per-(key, modifier) macrotexts. Track which slots actually got at least
+    -- one macrotext so applySetBindingClick can skip keys with no real binding --
+    -- otherwise SetBindingClick on an empty slot shadows the global default for that
+    -- key (e.g. MOUSEWHEELUP -> CAMERAZOOMIN). Bug discovered 2026-05-04.
     for keyName, slot in pairs(keyToSlot) do
         for _, modName in ipairs(ALL_MODIFIERS) do
             local macro = buildMacrotextForSlot(modName, keyName)
@@ -310,6 +314,7 @@ local function refreshKeybindAttrs()
                 local prefix = MODIFIER_PREFIXES[modName]
                 slot.button:SetAttribute(prefix .. "type" .. slot.variant, "macro")
                 slot.button:SetAttribute(prefix .. "macrotext" .. slot.variant, macro)
+                slot.hasBinding = true
             end
         end
     end
@@ -320,9 +325,29 @@ local function applySetBindingClick()
         pendingRefreshOnRegen = true
         return
     end
+
+    local nowBound = {}
     for keyName, slot in pairs(keyToSlot) do
+        if slot.hasBinding then
+            nowBound[keyName] = true
+        end
+    end
+
+    -- Restore the global default on keys we previously bound but no longer need.
+    -- SetBinding(key, nil) clears any user-level override, falling back to whatever
+    -- the keybinds-cache had (CAMERAZOOMIN for the wheel etc).
+    for keyName in pairs(lastBoundKeys) do
+        if not nowBound[keyName] then
+            SetBinding(keyName, nil)
+        end
+    end
+
+    for keyName in pairs(nowBound) do
+        local slot = keyToSlot[keyName]
         SetBindingClick(keyName, slot.button:GetName(), VARIANT_TO_VIRTUAL[slot.variant])
     end
+
+    lastBoundKeys = nowBound
 end
 
 
