@@ -1467,9 +1467,6 @@ function PTUnitFrame:Initialize()
         PT.ApplySpellsTooltip(attachTooltipTo, unit, self.button)
         self.hovered = true
         self:UpdateHealth()
-        if PTOptions.SetMouseover and util.IsSuperWowPresent() then
-            SetMouseoverUnit(self:GetResolvedUnit())
-        end
         PT.Mouseover = self:GetUnit()
         PT.MouseoverFrame = self
         PT.ApplyOverrideBindings()
@@ -1478,9 +1475,6 @@ function PTUnitFrame:Initialize()
         PT.HideSpellsTooltip()
         self.hovered = false
         self:UpdateHealth()
-        if PTOptions.SetMouseover and util.IsSuperWowPresent() then
-            SetMouseoverUnit(nil)
-        end
         PT.Mouseover = nil
         PT.MouseoverFrame = nil
         if PT.CurrentlyHeldButton and not util.GetAllButtonsSet()[PT.CurrentlyHeldButton] then
