@@ -1,4 +1,17 @@
-# Puppeteer (Ascension)
+# Puppeteer (Ascension) — archived, moved to [mhaslinsky/Puppeteer-Wrath](https://github.com/mhaslinsky/Puppeteer-Wrath)
+
+> ## ⚠️ This repo has moved
+>
+> Active development is now at **[mhaslinsky/Puppeteer-Wrath](https://github.com/mhaslinsky/Puppeteer-Wrath)**.
+>
+> The project (and Git history) was mirrored to a fresh repo on 2026-05-04 to drop the GitHub fork relationship to `OldManAlpha/Puppeteer` — the codebase has diverged enough during the WotLK 3.3.5a port that the "fork of" badge no longer reflected its status.
+>
+> For **installation, releases, issues, and pull requests**, please use the new repo:
+> **https://github.com/mhaslinsky/Puppeteer-Wrath**
+>
+> This archive will remain read-only as a safety net but is no longer maintained.
+
+---
 
 Unit-frames addon for healers, ported from [OldManAlpha/Puppeteer](https://github.com/OldManAlpha/Puppeteer) to **WotLK 3.3.5a / Project Ascension**. Originally HealersMate. Aims to be a viable alternative to Cell, VuhDo, or Healbot on the 3.3.5a private-server scene.
 
