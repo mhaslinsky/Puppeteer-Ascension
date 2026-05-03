@@ -787,30 +787,39 @@ do
         durationTextFlashColorsRange[seconds] = {colors[2], colors[1]}
     end
 end
+-- Slice 2: each aura icon gets a dedicated SecureActionButton parented INSIDE
+-- the icon frame. Click on aura -> secure dispatch fires the same spell as a
+-- click on the underlying unit frame area (mirroring attrs with the per-frame
+-- overlay). Parenting to the icon frame (not self.button) means visibility
+-- tracks the icon frame's own Hide()/Show() in ReleaseAuras/CreateAura -- we
+-- never call Hide() on the protected button directly (combat-protected). The
+-- button is paired 1:1 with the icon frame for the icon's lifetime.
+--
+-- CreateFrame for SecureActionButtonTemplate is itself combat-protected, so we
+-- skip this in combat and the icon falls back to a plain insecure Button via
+-- the legacy GetUnusedAuraButton path. UpgradePoolAurasToSecure() (called on
+-- PLAYER_REGEN_ENABLED) walks the pool OOC and adds secure buttons to any icon
+-- frames that missed out, so subsequent reuses get click-through.
+function PTUnitFrame:AttachSecureAuraButton(frame)
+    if not (PT.SecureClickCast and PT.SecureClickCast.IsEnabled()) then return nil end
+    if InCombatLockdown() then return nil end
+    local auraButton = CreateFrame("Button", nil, frame, "SecureActionButtonTemplate")
+    auraButton:SetAllPoints(frame)
+    auraButton:RegisterForClicks(unpack(PTOptions.CastWhen == "Mouse Up" and util.GetUpButtons() or util.GetDownButtons()))
+    auraButton.unitFrame = self
+    auraButton.secure = true
+    auraButton:SetScript("OnEnter", PTUnitFrame.AuraButton_OnEnter)
+    auraButton:SetScript("OnLeave", PTUnitFrame.AuraButton_OnLeave)
+    PT.SecureClickCast.AttachAuraButton(self, auraButton)
+    table.insert(self.auraButtons, auraButton)
+    return auraButton
+end
+
 function PTUnitFrame:AllocateAura()
     local frame = CreateFrame("Frame", nil, self.auraPanel)
     frame.unitFrame = self
 
-    -- Slice 2: in secure mode, each aura icon gets a dedicated SecureActionButton
-    -- parented INSIDE the icon frame. Click on aura -> secure dispatch fires the
-    -- same spell as a click on the underlying unit frame area (mirroring attrs
-    -- with the per-frame overlay). Parenting to the icon frame (not self.button)
-    -- means visibility tracks the icon frame's own Hide()/Show() in ReleaseAuras
-    -- /CreateAura -- we never call Hide() on the protected button directly,
-    -- which would taint in combat. The button is paired 1:1 with this icon
-    -- frame and lives for the icon's lifetime; no separate pool.
-    local auraButton
-    if PT.SecureClickCast and PT.SecureClickCast.IsEnabled() then
-        auraButton = CreateFrame("Button", nil, frame, "SecureActionButtonTemplate")
-        auraButton:SetAllPoints(frame)
-        auraButton:RegisterForClicks(unpack(PTOptions.CastWhen == "Mouse Up" and util.GetUpButtons() or util.GetDownButtons()))
-        auraButton.unitFrame = self
-        auraButton.secure = true
-        auraButton:SetScript("OnEnter", PTUnitFrame.AuraButton_OnEnter)
-        auraButton:SetScript("OnLeave", PTUnitFrame.AuraButton_OnLeave)
-        PT.SecureClickCast.AttachAuraButton(self, auraButton)
-        table.insert(self.auraButtons, auraButton)
-    end
+    local auraButton = self:AttachSecureAuraButton(frame)
 
     local icon = frame:CreateTexture(nil, "ARTWORK")
     local border = frame:CreateTexture(nil, "OVERLAY")
@@ -1055,6 +1064,26 @@ local enemyDebuffSorter = function(a, b)
     end
     return (a.time.startTime + a.time.duration) < (b.time.startTime + b.time.duration)
 end
+-- Slice 2: walk the aura icon pool and add a secure button to any icon frame
+-- that's missing one. Icons allocated during combat (when CreateFrame for
+-- SecureActionButtonTemplate is protected and skipped) end up here. Idempotent;
+-- runs from UpdateAuras post-Release, so each combat-exit + UNIT_AURA tick
+-- promotes any pooled-and-stripped icons before re-allocation. Cheap: pool is
+-- short and we early-out per icon.
+function PTUnitFrame:UpgradePoolAurasToSecure()
+    if not (PT.SecureClickCast and PT.SecureClickCast.IsEnabled()) then return end
+    if InCombatLockdown() then return end
+    for _, aura in ipairs(self.auraIconPool) do
+        if not aura.dedicatedButton then
+            local button = self:AttachSecureAuraButton(aura.frame)
+            if button then
+                aura.dedicatedButton = button
+                button.AuraOwner = aura
+            end
+        end
+    end
+end
+
 function PTUnitFrame:UpdateAuras()
     Puppeteer.StartTiming("UFUpdateAuras")
     local profile = self:GetProfile()
@@ -1062,6 +1091,7 @@ function PTUnitFrame:UpdateAuras()
     local enemy = self:IsEnemy()
 
     self:ReleaseAuras()
+    self:UpgradePoolAurasToSecure()
 
     if profile.AuraTracker.Height < 1 then
         return
