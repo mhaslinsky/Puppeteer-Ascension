@@ -49,7 +49,8 @@ local MAX_VARIANTS_PER_BUTTON = 5
 
 local keybindButtons = {}    -- ordered list of secure keybind buttons
 local keyToSlot = {}         -- key name -> {button=<frame>, variant=1..5, hasBinding=bool}
-local lastBoundKeys = {}     -- set of keys we previously SetBindingClick'd so we know what to unbind on refresh
+local lastBoundKeys = {}     -- set of keys we previously SetBindingClick'd so we know what to release on refresh
+local originalBindings = {}  -- key name -> binding action that was in effect before our SetBindingClick (for restore)
 local overlaysByFrame = {}   -- unitFrame -> overlay button
 local pendingRefreshOnRegen = false
 local initialized = false
@@ -333,16 +334,30 @@ local function applySetBindingClick()
         end
     end
 
-    -- Restore the global default on keys we previously bound but no longer need.
-    -- SetBinding(key, nil) clears any user-level override, falling back to whatever
-    -- the keybinds-cache had (CAMERAZOOMIN for the wheel etc).
+    -- Restore the original binding action on keys we're releasing. SetBinding(key, nil)
+    -- isn't enough -- it clears the runtime entry entirely, leaving the key with no
+    -- binding until /reload reads bindings-cache.wtf again. Instead we snapshot whatever
+    -- was bound before our override (typically the global default like CAMERAZOOMIN) and
+    -- write it back. Same pattern as legacy OverrideBindings.lua:158/182.
     for keyName in pairs(lastBoundKeys) do
         if not nowBound[keyName] then
-            SetBinding(keyName, nil)
+            local original = originalBindings[keyName]
+            if original and original ~= "" then
+                SetBinding(keyName, original)
+            else
+                SetBinding(keyName, nil)
+            end
+            originalBindings[keyName] = nil
         end
     end
 
     for keyName in pairs(nowBound) do
+        if not lastBoundKeys[keyName] then
+            -- First time binding this key in the current session; snapshot what's there
+            -- before SetBindingClick clobbers it. GetBindingAction returns "" when no
+            -- binding exists, which we treat as nil on restore.
+            originalBindings[keyName] = GetBindingAction(keyName)
+        end
         local slot = keyToSlot[keyName]
         SetBindingClick(keyName, slot.button:GetName(), VARIANT_TO_VIRTUAL[slot.variant])
     end
