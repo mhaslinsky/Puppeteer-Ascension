@@ -411,10 +411,6 @@ function OnAddonLoaded()
 
     SetOutOfRangeArrowEnabled(PTOptions.OutOfRangeArrow)
 
-    if util.IsSuperWowPresent() then
-        SetEnemyTrackingEnabled(PuppeteerSettings.IsExperimentEnabled("Enemy"))
-    end
-
     TestUI = PTOptions.TestUI
 
     if TestUI then

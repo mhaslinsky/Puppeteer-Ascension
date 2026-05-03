@@ -14,38 +14,22 @@ local getn = table.getn
 Classes = {"WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"}
 HealerClasses = {"PRIEST", "DRUID", "SHAMAN", "PALADIN"}
 
-UnitXPSP3 = pcall(UnitXP, "inSight", "player", "player") -- WTB better way to check for UnitXP SP3
+-- Vanilla 1.12 client mods (SuperWoW, UnitXP SP3, Nampower, VanillaUtils) do not exist on 3.3.5a/Ascension.
+-- Hardcoded false; version-tier constants kept because consumers reference them via util.HasModVersion.
+UnitXPSP3 = false
 UnitXPSP3_Version = -1
-if UnitXPSP3 and pcall(UnitXP, "version", "coffTimeDateStamp") then
-    UnitXPSP3_Version = UnitXP("version", "coffTimeDateStamp") or -1
-end
 UnitXPSP3Latest = 0
-SuperWoW = SpellInfo ~= nil
+SuperWoW = false
 SuperWoWFeatureLevel = 0
 SuperWoW_v1_2 = 1
 SuperWoW_v1_3 = 2
 SuperWoW_v1_4 = 3
 SuperWoWLatest = SuperWoW_v1_4
-if SUPERWOW_VERSION then
-    if SUPERWOW_VERSION == "1.2" then
-        SuperWoWFeatureLevel = SuperWoW_v1_2
-    elseif SUPERWOW_VERSION == "1.3" then
-        SuperWoWFeatureLevel = SuperWoW_v1_3
-    else -- Anything newer than 1.3 is considered as 1.4 feature set
-        SuperWoWFeatureLevel = SuperWoW_v1_4
-    end
-end
-Nampower = QueueSpellByName ~= nil
+Nampower = false
 NampowerFeatureLevel = 0
 Nampower_v3_0 = 1
 NampowerLatest = Nampower_v3_0
-if GetNampowerVersion then
-    local major, minor, patch = GetNampowerVersion()
-    if major >= 3 then
-        NampowerFeatureLevel = Nampower_v3_0
-    end
-end
-VanillaUtils = pcall(UnitXP, "unitPosition", "player")
+VanillaUtils = false
 
 EnabledMods = {
     ["SuperWoW"] = SuperWoW and SuperWoWFeatureLevel,
@@ -226,7 +210,7 @@ function HasModVersion(mod, version)
     return EnabledMods[mod] and EnabledMods[mod] >= version
 end
 
-TurtleWow = TURTLE_WOW_VERSION ~= nil
+TurtleWow = false -- Turtle WoW is a vanilla 1.12 fork; not applicable to 3.3.5a/Ascension.
 
 PowerColors = {
     ["mana"] = {0.1, 0.25, 1}, --{r = 0, g = 0, b = 0.882}, Not accurate, changed color to make brighter

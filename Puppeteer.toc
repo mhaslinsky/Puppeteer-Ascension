@@ -56,7 +56,8 @@ core\OverrideBindings.lua
 core\Bindings.lua
 core\ActionBindings.lua
 core\Roles.lua
-core\EnemyTracker.lua
+# Phase 4: EnemyTracker.lua removed. SuperWoW-only enemy-frame group is gone with the
+# capability-flag hardcoding; native 3.3.5a has no equivalent unit-token enumeration.
 
 PuppeteerSettings.lua
 PTUnitFrame.lua
