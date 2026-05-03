@@ -1,8 +1,6 @@
 SLASH_PUPPETEER1 = "/puppeteer"
 SLASH_PUPPETEER2 = "/pt"
-if not IsAddOnLoaded("HealersMate") then
-    SLASH_PUPPETEER3 = "/hm"
-end
+SLASH_PUPPETEER3 = "/hm"
 SlashCmdList["PUPPETEER"] = function(args)
     if args == "reset" then
         for _, group in pairs(Puppeteer.UnitFrameGroups) do
@@ -84,9 +82,6 @@ SlashCmdList["PUPPETEER"] = function(args)
         DEFAULT_CHAT_FRAME:AddMessage(PTUtil.Colorize("/pt hide", 0, 0.8, 0).." -- Hides the UI")
         DEFAULT_CHAT_FRAME:AddMessage(PTUtil.Colorize("/pt roles", 0, 0.8, 0).." -- Broadcast the roles you have assigned to chat")
         DEFAULT_CHAT_FRAME:AddMessage(PTUtil.Colorize("/pt silent", 0, 0.8, 0).." -- Turns off/on message when addon loads")
-    elseif args == "importhm" then
-        Puppeteer.ImportHealersMateSettings()
-        Puppeteer.Info("Imported HealersMate settings")
     elseif args == "" then
         PTSettingsGui.TabFrame:Show()
     else

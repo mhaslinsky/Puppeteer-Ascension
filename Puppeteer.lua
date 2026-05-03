@@ -306,8 +306,6 @@ function OnAddonLoaded()
 
     InitRoleDropdown()
 
-    SetOutOfRangeArrowEnabled(PTOptions.OutOfRangeArrow)
-
     TestUI = PTOptions.TestUI
 
     if TestUI then
@@ -367,117 +365,6 @@ function OnAddonLoaded()
             end
         end
     end
-end
-
-function PromptHealersMateImport()
-    if IsAddOnLoaded("HealersMate") and HealersMate and PTOptions["ImportedFromHM"] == nil then
-        local dialog = PTGuiLib.Get("simple_dialog", UIParent)
-            :SetWidth(350)
-            :SetPoint("CENTER")
-            :SetTitle("Puppeteer HealersMate Import")
-            :SetText("Puppeteer has detected HealersMate. Would you like to import your character's data from HealersMate? "..
-                "This will overwrite your settings in Puppeteer!")
-            :SetMovable(true)
-        dialog:GetHandle():SetFrameStrata("HIGH")
-        dialog:SetDisposeHandler(function(self)
-            self:GetHandle():SetFrameStrata("MEDIUM")
-        end)
-
-        dialog:AddButton("Import & Disable HM", function()
-            DisableAddOn("HealersMate")
-            ImportHealersMateSettings()
-        end)
-        dialog:AddButton("Import & Don't Disable HM", function()
-            ImportHealersMateSettings()
-        end)
-        dialog:AddButton("Don't Import & Disable HM", function()
-            PTOptions["ImportedFromHM"] = false
-            DisableAddOn("HealersMate")
-            ReloadUI()
-            dialog:Dispose()
-        end)
-        dialog:AddButton("Don't Import & Don't Disable HM", function()
-            PTOptions["ImportedFromHM"] = false
-            dialog:Dispose()
-        end)
-        dialog:AddButton("Ask Me Later", function()
-            dialog:Dispose()
-        end)
-    end
-end
-
-function ImportHealersMateSettings()
-    if _G.HMOptions then
-        _G.PTOptions = util.CloneTable(_G.HMOptions, true)
-        _G.PTOptions["ImportedFromHM"] = true
-    end
-    if _G.HMSpells then
-        local loadout = ConvertSpellsToBindings(_G.HMSpells)
-        GetBindingLoadouts()["Imported"] = loadout
-        PTBindings.SelectedLoadout = "Imported"
-    end
-
-    if _G.PTGlobalOptions["ImportedFromHM"] == nil then
-        -- Import global fields if HealersMate has a larger heal cache
-        if _G.PTHealCache and (util.GetTableSize(_G.PTHealCache) < util.GetTableSize(_G.HMHealCache)) then
-            _G.PTHealCache = _G.HMHealCache
-            _G.PTPlayerHealCache = _G.HMPlayerHealCache
-            _G.PTRoleCache = _G.HMRoleCache
-        end
-        _G.PTGlobalOptions["ImportedFromHM"] = true
-    end
-
-    ReloadUI()
-end
-
--- Converts legacy HealersMate spells to a Puppeteer loadout
-function ConvertSpellsToBindings(spells)
-    local specialToActionMap = {
-        ["TARGET"] = "Target",
-        ["ASSIST"] = "Assist",
-        ["FOLLOW"] = "Follow",
-        ["CONTEXT"] = "Menu",
-        ["ROLE"] = "Role",
-        ["SET ROLE"] = "Role",
-        ["ROLE: TANK"] = "Role: Tank",
-        ["ROLE: HEALER"] = "Role: Healer",
-        ["ROLE: DAMAGE"] = "Role: Damage",
-        ["ROLE: NONE"] = "Role: None"
-    }
-    local loadout = CreateEmptyBindingsLoadout()
-    for target, modifiers in pairs(spells) do
-        for modifier, buttons in pairs(modifiers) do
-            loadout.Bindings[target][modifier] = {}
-            for button, spell in pairs(buttons) do
-                local binding
-                if util.StartsWith(spell, "Item: ") then
-                    binding = {
-                        Type = "ITEM",
-                        Data = string.sub(spell, string.len("Item: ") + 1)
-                    }
-                elseif util.StartsWith(spell, "Macro: ") then
-                    binding = {
-                        Type = "MACRO",
-                        Data = string.sub(spell, string.len("Macro: ") + 1)
-                    }
-                elseif specialToActionMap[string.upper(spell)] then
-                    binding = {
-                        Type = "ACTION",
-                        Data = specialToActionMap[string.upper(spell)]
-                    }
-                else
-                    binding = {
-                        Type = "SPELL",
-                        Data = spell
-                    }
-                end
-
-                loadout.Bindings[target][modifier][button] = binding
-            end
-        end
-    end
-    PruneLoadout(loadout)
-    return loadout
 end
 
 function CheckPartyFramesEnabled()

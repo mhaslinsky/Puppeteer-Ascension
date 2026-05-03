@@ -34,8 +34,6 @@ RegisterEventHandler("PLAYER_ENTERING_WORLD", function()
     if PTOptions.DisablePartyFrames.InParty then
         SetPartyFramesEnabled(false)
     end
-
-    PromptHealersMateImport()
 end)
 RegisterEventHandler({"UNIT_HEALTH", "UNIT_MAXHEALTH"}, function()
     local unit = arg1

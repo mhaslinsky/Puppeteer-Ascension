@@ -524,9 +524,6 @@ function CreateTab_Options_Other(panel)
     inverseDropdown:SetPoint("LEFT", dragAllCheckbox, "RIGHT", 90, 0)
     factory:checkbox("Show Heal Predictions", {"See predictions on incoming healing"},
         "UseHealPredictions", function() Puppeteer.UpdateAllIncomingHealing() end)
-
-    factory:checkbox("Out of Range Arrow", {"See an arrow when hovering over an out of range player"},
-        "OutOfRangeArrow", function() Puppeteer.SetOutOfRangeArrowEnabled(PTOptions.OutOfRangeArrow) end)
 end
 
 function CreateTab_Options_Advanced(panel)

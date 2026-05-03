@@ -75,9 +75,9 @@ This fork rewrites the Vanilla-only subsystems against native 3.3.5a APIs. If yo
 ### Setting caveats worth knowing
 
 - **`Cast When (Keys)` (Key Up vs Key Down)** is honored only on the legacy insecure path. On the secure path (default) keybinds always fire on key-down — that's how Blizzard's `SetBindingClick` works, not something we can override without giving up secure-template benefits. The setting still applies to `Menu` / `Role` / `Macro` / `Script` / `Multi` binding types (which keep using the legacy dispatcher) and to the whole legacy path if you turn off `UseSecureClickCast`.
-- **`Out of Range Arrow`** has coarser accuracy than the Vanilla original. Without UnitXP SP3 / SuperWoW, range checks fall back to `CheckInteractDistance`, which only resolves a fixed ~28-yd interact bracket — fine for "in range / out of range" signaling but not the fine-grained yard distance the upstream addon shows.
+- **In-range / out-of-range darkening uses `CheckInteractDistance`'s fixed ~28-yd bracket.** Stock 3.3.5a doesn't expose precise yard distances; the upstream addon got that from UnitXP SP3 / SuperWoW. Frame darkening still works for "in range / out of range" signaling, just at coarser granularity. The Vanilla addon's directional out-of-range arrow has been removed entirely (it relied on precise unit positions and facing angles that 3.3.5a doesn't expose).
 - **Settings GUI is blocked in combat.** Opening or staying in `/pt` while in combat would taint secure-attribute writes to the click-cast overlays, so the GUI auto-closes on `PLAYER_REGEN_DISABLED` and refuses to open while in combat. Edit bindings between pulls.
-- **Various TWoW / SuperWoW Experiments are gone.** The "Mods" tab, "Set Mouseover" checkbox, "(SuperWoW) Cast Icons" experiment, "(TWoW) LFT Auto Role" checkbox, and "(TWoW) Auto Role" experiment have all been removed because their underlying client mods or addon-channel protocols don't exist on 3.3.5a.
+- **Various TWoW / SuperWoW Experiments are gone.** The "Mods" tab, "Set Mouseover" checkbox, "(SuperWoW) Cast Icons" experiment, "(TWoW) LFT Auto Role" checkbox, "(TWoW) Auto Role" experiment, the directional Out-of-Range Arrow, and the HealersMate auto-import have all been removed because their underlying client mods, addon-channel protocols, or sibling addons don't exist on 3.3.5a.
 
 ## Roadmap
 

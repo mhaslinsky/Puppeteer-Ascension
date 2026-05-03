@@ -1182,26 +1182,6 @@ function GetPlayerFacing()
     return minimaparrow:GetFacing()
 end
 
--- The Out of Range Arrow rendering subsystem (PTArrowUpdater_OnUpdate in PTUnitFrame.lua)
--- needs precise unit positions / facing angles, which only SuperWoW / UnitXP SP3 / VanillaUtils
--- supplied. None of those exist on 3.3.5a. The OnUpdate is gated permanently off (see
--- Puppeteer.SetOutOfRangeArrowEnabled), so these stubs only exist to keep the global references
--- valid; they are not expected to be invoked. Candidate for full deletion alongside the arrow
--- setting itself.
-function GetUnitDirection(from, to)
-    return 0
-end
-
-function GetFacingAngle(unit)
-    return 0
-end
-
-GetCameraFacing = GetPlayerFacing
-
-function GetCameraFacingAngle(unit)
-    return 0
-end
-
 function CanClientGetAuraIDs()
     return false
 end
