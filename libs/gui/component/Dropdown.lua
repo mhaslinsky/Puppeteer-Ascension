@@ -41,11 +41,18 @@ function PTGuiDropdown:New()
         dropdownSetHeight(self, 25)
     end
     obj:SetShowShadow(true) -- Need to do this on creation to fix the visual position
-    -- Make clicking anywhere on the dropdown open the menu
+    -- Make clicking anywhere on the dropdown open the menu.
+    -- Phase 4: was relaying through the chevron button's OnClick via CallWithThis,
+    -- but on 3.3.5a that path is unreliable (the Blizzard chevron's OnClick body
+    -- expects to be invoked from a real Button click, and Ascension's
+    -- UIDropDownMenuTemplate may bind extra logic we can't reliably re-fire).
+    -- ToggleDropDownMenu directly is the modern-WoW idiom and works on the dropdown
+    -- frame regardless of which sub-region was clicked.
     dropdown:EnableMouse(true)
     dropdown:SetScript("OnMouseUp", function()
-        if MouseIsOver(this) then
-            PTUtil.CallWithThis(_G[this:GetName().."Button"], _G[this:GetName().."Button"]:GetScript("OnClick"))
+        local frame = this
+        if frame and MouseIsOver(frame) then
+            ToggleDropDownMenu(1, nil, frame)
         end
     end)
     dropdown:SetScript("OnSizeChanged", function()
