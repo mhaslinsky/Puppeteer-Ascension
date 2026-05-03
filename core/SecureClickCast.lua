@@ -366,7 +366,18 @@ function SecureClickCast.Init()
     -- One-time event registration via the addon's frame-based dispatcher.
     local f = CreateFrame("Frame")
     f:RegisterEvent("PLAYER_REGEN_ENABLED")
-    f:SetScript("OnEvent", function() onRegenEnabled() end)
+    -- PLAYER_ENTERING_WORLD fires once per /reload after all addons have
+    -- finished init. The OnAddonLoaded RefreshAll alone gets clobbered by
+    -- other addons (notably ElvUI action bars) re-applying their bindings
+    -- after Puppeteer's load, so re-run once everything has settled.
+    f:RegisterEvent("PLAYER_ENTERING_WORLD")
+    f:SetScript("OnEvent", function()
+        if event == "PLAYER_REGEN_ENABLED" then
+            onRegenEnabled()
+        elseif event == "PLAYER_ENTERING_WORLD" then
+            SecureClickCast.RefreshAll()
+        end
+    end)
 
     SecureClickCast.RefreshAll()
 end
