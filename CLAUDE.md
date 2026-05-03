@@ -16,18 +16,13 @@ SavedVariables: `PTGlobalOptions`, `PTHealCache`, `PTPlayerHealCache`, `PTRoleCa
 
 ## Big-picture architecture
 
-**Environment-table pattern (read this first).** Almost every Lua file begins with `PTUtil.SetEnvironment(SomeNamespace)`. This calls `setfenv(2, t)` so all globals declared in the file land on `SomeNamespace` instead of `_G`, with a metatable falling back to `PTUnitProxy` (when SuperWoW is present) or `_G`. Consequences:
+**Environment-table pattern (read this first).** Almost every Lua file begins with `PTUtil.SetEnvironment(SomeNamespace)`. This calls `setfenv(2, t)` so all globals declared in the file land on `SomeNamespace` instead of `_G`, with a metatable falling back to `_G`. Consequences:
 - A bare `function Foo()` inside `Puppeteer.lua` is actually `Puppeteer.Foo`, callable from Bindings.xml as `Puppeteer.HandleKeyPress(n)`.
 - To reach the real `_G` you must capture it explicitly: `local _G = getfenv(0)`. You'll see this idiom at the top of nearly every file.
-- `PTUnitProxy` (in `libs/UnitProxy.lua`, only loaded when SuperWoW is present) wraps `UnitHealth`, `UnitName`, etc. so they transparently resolve "custom units" (e.g. `focus3`) to their tracked GUIDs. Touching unit functions through the environment fall-through gives you GUID-aware behavior for free; reaching through `_G` bypasses it.
 
-**Capability detection drives everything.** `libs/Util.lua` probes for client mods at load:
-- `SuperWoW` (detected via `SpellInfo ~= nil`, plus `SUPERWOW_VERSION` for feature level 1.2/1.3/1.4)
-- `UnitXP SP3` (detected by `pcall(UnitXP, "inSight", ...)`)
-- `Nampower` (`QueueSpellByName ~= nil`, `GetNampowerVersion()`)
-- `VanillaUtils` (`pcall(UnitXP, "unitPosition", ...)`)
+(Pre-Phase-4 the metatable also fell through `PTUnitProxy` so unit functions transparently resolved SuperWoW custom units like `focus3` to their tracked GUIDs. `PTUnitProxy` and `libs/UnitProxy.lua` were deleted in Phase 4 / [PR #8](https://github.com/mhaslinsky/Puppeteer-Ascension/pull/8) along with the multi-focus feature-cut for v2.0; native unit functions now apply unmodified.)
 
-These flags gate features (custom/focus units, aura timers, precise distance, line-of-sight, GUID rosters). Any new feature that depends on a mod must check these flags and degrade gracefully — vanilla 1.12 with zero mods must still work.
+**Capability detection is gone.** `libs/Util.lua` previously probed for vanilla-1.12 client mods at load (`SuperWoW`, `UnitXP SP3`, `Nampower`, `VanillaUtils`, `TurtleWow`) to gate optional features. Phase 4 hardcoded all five flags to literal `false` — none of those mods exist on 3.3.5a. The flags and helper functions (`IsSuperWowPresent` etc.) are still defined for legacy callers but always return `false`. Any new feature should target stock 3.3.5a Wrath / Project Ascension; do not branch on these flags expecting a mod path to fire.
 
 **Three layers stacked on top of frames.**
 1. `core/` — event wiring, command handlers, role inference, unit tracking (range/sight), binding resolution, enemy tracking. `core/EventHandler.lua` is the single registration point: `RegisterEventHandler({events...}, fn)` creates a hidden frame per registration and pushes it into `EventHandlerFrames` so they can be torn down together.

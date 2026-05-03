@@ -12,16 +12,17 @@
 > | 0.5 — secure-template spike | ✅ | Secure click-cast architecture proven via throwaway addon (`SecureSpike`) |
 > | 2a — Lua 5.0→5.1 + 1.12→Wrath sweep | ✅ | `table.setn` obsolete cascade fixed; implicit `arg` table → `{...}`; UIDropDownMenu / PanelTemplates signature flips; ScrollFrame `this`-global → `(self,...)` |
 > | 2b — Ace2 framework rip | ✅ | All Ace2 libs removed (AceLibrary/Locale/OO/Debug/Addon/Console/Event/Hook, Compost, Gratuity, RosterLib, Deformat, ItemBonusLib, Banzai, HealComm-1.0). Only LibStub remains. PuppeteerLib replaced with frame-based dispatcher; aggro via native `UnitThreatSituation` |
-> | 3 — combat-log + auras + heal prediction | 🟡 partial | `UnitAura` migration (durations native); `AuraTracker.lua` retired; native 3.3.5a `Cooldown` frame integration. Still pending: combat-log (CLEU) consumer, LibHealComm-4.0 heal-prediction wire-up, CastIcon/SpellLine sweep |
-> | 4 — roster / threat / GUID consolidation | ⏳ | |
-> | 5 — secure click-cast integration | ⏳ | Architecture proven (Phase 0.5); integration not started — click-cast currently blocked by 3.3.5a's protected-frame system |
+> | 3 — combat-log + auras + heal prediction | ✅ | `UnitAura` migration (native durations); `AuraTracker.lua` retired; native 3.3.5a `Cooldown` frame integration; native `UNIT_SPELLCAST_*` cast tracking; CLEU heal-amount learning into `PTHealCache`/`PTPlayerHealCache` (LibHealComm-4.0 wire-up abandoned — Ascension reassigns vanilla 3.3.5a spell IDs, breaking LibHealComm's name-keyed tables) |
+> | 4 — roster / threat / GUID consolidation | ✅ | Cap flags hardcoded `false` (no SuperWoW/UnitXP/Nampower/VanillaUtils probes); `EnemyTracker.lua` / `UnitProxy.lua` / `AuraTracker.lua` deleted; `ShaguUtil.lua` pruned 224 dead lines; PTUnit dual-key collapsed to single-key (unit-id); 4 pre-existing Vanilla→Wrath script-signature port bugs fixed (CallWithThis `self=nil`, tooltip SetOwner on FontString, dropdown chevron OnClick, dropdown init callback). Net −1245 / +119 |
+> | 5 — secure click-cast integration | ⏳ | Architecture proven (Phase 0.5); integration not started — click-cast currently blocked by 3.3.5a's protected-frame system. **Next slice; this is what turns the addon "shippable"** |
 > | 6 — Ascension classless / Mystic specifics | ⏳ | |
 > | 7 — cleanup, docs, distribution | ⏳ | |
 >
 > ### Known limitations during port
 > - **Click-to-cast is blocked** until Phase 5 ships secure-template integration. Frames render and aggro detection works, but clicking a unit frame to cast a spell triggers WoW's "Interface action failed because of an AddOn" popup.
-> - **Heal prediction is offline** until Phase 3 wires up LibHealComm-4.0. The HealComm-1.0 dependency was removed in Phase 2b without a replacement.
-> - **Multi-focus is feature-cut** for v2.0. Native 3.3.5a `focus` is single-slot; a multi-focus equivalent would require separate macro-by-name workarounds with limitations.
+> - **Heal prediction is self-cast only.** The CLEU-based learner populates incoming-heal bars when the player casts on themselves or a damaged target; predicting incoming heals from other group members would require a target identifier in 3.3.5a's `UNIT_SPELLCAST_*` events that doesn't exist. Deferred.
+> - **Multi-focus is feature-cut** for v2.0. Native 3.3.5a `focus` is single-slot, and the SuperWoW-only `focus2..N` tokens are gone with the `UnitProxy.lua` delete in Phase 4. Native single-slot focus restoration is a v2.1 follow-up.
+> - **Vanilla 1.12 / SuperWoW are no longer supported targets.** All capability probes (`SuperWoW`, `UnitXPSP3`, `Nampower`, `VanillaUtils`, `TurtleWow`) are hardcoded `false` in `libs/Util.lua`. Original Vanilla-only code paths have been removed; the addon targets stock 3.3.5a Wrath / Project Ascension only.
 >
 > Original Vanilla 1.12 README follows below. Anything in it that depends on SuperWoW / UnitXP SP3 / Nampower / VanillaUtils is being progressively replaced with native 3.3.5a equivalents and may behave differently in this fork.
 
