@@ -200,7 +200,7 @@ function SecureClickCast.AttachOverlay(unitFrame)
     -- the secure dispatch was a no-op and we fall through to the legacy insecure
     -- handler so those clicks still work OOC. For bindings that DID dispatch
     -- securely, the type<N> attr is set, so we skip to avoid double-firing.
-    overlay:SetScript("OnClick", function()
+    overlay:HookScript("OnClick", function()
         local button = arg1
         if not button then return end
         local variant = MOUSE_BUTTON_TO_VARIANT[button]
@@ -238,7 +238,7 @@ local function newKeybindButton(index)
     -- the user bound an unsupported Action like Menu or Role to this key), fire
     -- the legacy insecure handler against the currently-hovered Puppeteer frame.
     -- Won't work over non-Puppeteer frames since PT.Mouseover isn't set there.
-    btn:SetScript("OnClick", function()
+    btn:HookScript("OnClick", function()
         local clickName = arg1
         if not clickName then return end
         local variant = MOUSE_BUTTON_TO_VARIANT[clickName]
