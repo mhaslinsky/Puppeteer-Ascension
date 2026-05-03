@@ -213,7 +213,7 @@ function SecureClickCast.AttachOverlay(unitFrame)
             return  -- already handled by secure dispatch
         end
         local unit = unitFrame:GetUnit()
-        if unit then PT.UnitFrame_OnClick(button, unit, unitFrame) end
+        if unit then UnitFrame_OnClick(button, unit, unitFrame) end
     end)
 
     overlaysByFrame[unitFrame] = overlay
@@ -250,8 +250,8 @@ local function newKeybindButton(index)
         if variant and btn:GetAttribute(prefix .. "type" .. variant) then
             return  -- already handled by secure dispatch
         end
-        if PT.Mouseover and PT.MouseoverFrame then
-            PT.UnitFrame_OnClick(clickName, PT.Mouseover, PT.MouseoverFrame)
+        if Mouseover and MouseoverFrame then
+            UnitFrame_OnClick(clickName, Mouseover, MouseoverFrame)
         end
     end)
     return btn
