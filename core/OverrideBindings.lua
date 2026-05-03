@@ -42,6 +42,10 @@ function InitOverrideBindingsMapping()
         end
     end
 
+    -- Phase 5: when secure click-cast is on, leave key dispatch to SetBindingClick.
+    if (SecureClickCast and SecureClickCast.IsEnabled()) then
+        return
+    end
     -- SetBinding is protected on 3.3.5a; calling in combat triggers a "prevented
     -- call of secure function" error. The cleanup pass can wait for combat to end.
     if InCombatLockdown() then
@@ -136,6 +140,12 @@ end
 -- End of UPDATE_BINDINGS mitigation
 
 function ApplyOverrideBindings()
+    -- Phase 5 / Slice 1: secure click-cast owns key dispatch via SetBindingClick.
+    -- Skip the legacy SetBinding flow entirely when secure is enabled, otherwise
+    -- the per-hover SetBinding calls clobber the secure SetBindingClick wiring.
+    if (SecureClickCast and SecureClickCast.IsEnabled()) then
+        return
+    end
     -- SetBinding is protected on 3.3.5a; in combat the call is blocked and prints
     -- "AddOn 'Puppeteer' prevented the call of the secure function 'SetBinding()'".
     -- Skip the rebind entirely so we don't spam the error for every mouseover.
@@ -158,6 +168,9 @@ function ApplyOverrideBindings()
 end
 
 function RemoveOverrideBindings()
+    if (SecureClickCast and SecureClickCast.IsEnabled()) then
+        return
+    end
     if util.IsTableEmpty(StoredBindings) then
         return
     end

@@ -1448,6 +1448,8 @@ function PTUnitFrame:Initialize()
     button:SetHighlightTexture(nil)
     button:SetPushedTexture(nil)
 
+    if PT.SecureClickCast then PT.SecureClickCast.AttachOverlay(self) end
+
     -- Buff Panel Element
 
     local buffPanel = CreateFrame("Frame", "$parentBuffPanel", container)

@@ -256,14 +256,19 @@ function PTGuiDropdown:BakeOptions(options, parent)
         opt.arg1 = opt
         opt.arg2 = self
         opt.gui = self
-        if opt.dropdownText or opt.closeOnClick then
-            local func = opt.func
-            opt.func = function(self, gui)
+        -- Wrath UIDropDownMenuButton_OnClick calls func as (menuButton, arg1, arg2, checked)
+        -- whereas the addon's authored callbacks expect Vanilla's (arg1, arg2). Always
+        -- wrap to drop the leading menuButton arg so callers see (opt, dropdown).
+        local userFunc = opt.func
+        if userFunc or opt.dropdownText or opt.closeOnClick then
+            opt.func = function(menuButton, arg1, arg2)
+                local self = arg1 or opt
+                local gui = arg2 or self.gui
                 if self.dropdownText then
                     gui:SetText(self.dropdownText)
                 end
-                if func then
-                    func(self, gui)
+                if userFunc then
+                    userFunc(self, gui)
                 end
                 if self.closeOnClick then
                     gui:SetToggleState(false)
