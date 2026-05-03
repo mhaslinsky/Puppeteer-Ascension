@@ -766,6 +766,43 @@ end
 
 AuraTooltip = CreateFrame("GameTooltip", "PTAuraTooltip", UIParent, "GameTooltipTemplate")
 
+-- Slice 2: aura buttons are EnableMouse(false) when SCC is enabled (so clicks
+-- pass through to the per-frame secure overlay); that also kills the
+-- OnEnter/OnLeave-driven tooltip path. Replace it with cursor-position
+-- polling. Cheap bounds check on auraPanel up front -> only iterates icons
+-- when the cursor is roughly in the right neighborhood. Singleton frame so
+-- there's exactly one OnUpdate firing per frame regardless of how many unit
+-- frames exist.
+local auraHoverPoller = CreateFrame("Frame")
+local hoveredAuraComponent = nil
+auraHoverPoller:SetScript("OnUpdate", function()
+    if not (Puppeteer.SecureClickCast and Puppeteer.SecureClickCast.IsEnabled()) then return end
+    local matched = nil
+    for _, ui in ipairs(Puppeteer.AllUnitFrames) do
+        local panel = ui.auraPanel
+        if panel and panel:IsVisible() and MouseIsOver(panel) then
+            for _, aura in ipairs(ui.auraIcons) do
+                local f = aura.frame
+                if f:IsVisible() and MouseIsOver(f) then
+                    matched = aura
+                    break
+                end
+            end
+            break
+        end
+    end
+    if matched ~= hoveredAuraComponent then
+        if hoveredAuraComponent then
+            AuraTooltip:Hide()
+        end
+        if matched then
+            local frame = matched.frame
+            frame.unitFrame:ApplyAuraTooltip(frame)
+        end
+        hoveredAuraComponent = matched
+    end
+end)
+
 local AURA_DURATION_TEXT_FLASH_THRESHOLD = 5
 local AURA_DURATION_TEXT_LOW_THRESHOLD = 30
 -- A map of all seconds below the flash threshold to an array of colors to interpolate
