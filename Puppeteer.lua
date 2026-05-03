@@ -95,59 +95,23 @@ local function OpenUnitFramesIterator()
     -- UnitFrames function definition.
     -- Returns an iterator for the unit frames of the unit.
     -- These iterators have a serious problem in that they do not support concurrent iteration.
-    if util.IsSuperWowPresent() then
-        local EMPTY_UIS = {}
-        local PTUnitFrames = PTUnitFrames
-        local GuidUnitMap = PTGuidRoster.GuidUnitMap
-        local iterTable = {} -- The table reused for iteration over GUID units
-        local uis
-        local i = 0
-        local len = 0
-        local iterFunc = function()
-            i = i + 1
-            if i <= len then
-                return uis[i]
-            end
+    -- Phase 4: GUID-keyed iterator branch removed; revisit when Task A collapses PTUnit
+    -- to GUID-only and the iterator may need to accept either GUID or unit-id.
+    local PTUnitFrames = PTUnitFrames
+    local uis
+    local i = 0
+    local len = 0
+    local iterFunc = function()
+        i = i + 1
+        if i <= len then
+            return uis[i]
         end
-        function UnitFrames(unit)
-            if i < len then
-                print("Collision: "..i.."/"..len)
-            end
-            if GuidUnitMap[unit] then -- If a GUID is provided, ALL UIs associated with that GUID will be iterated
-                uis = iterTable
-                for i = 1, table.getn(uis) do
-                    uis[i] = nil
-                end
-                table.setn(uis, 0)
-                for _, unit in pairs(GuidUnitMap[unit]) do
-                    for _, frame in ipairs(PTUnitFrames[unit] or EMPTY_UIS) do
-                        table.insert(uis, frame)
-                    end
-                end
-            else
-                uis = PTUnitFrames[unit] or EMPTY_UIS
-            end
-            len = table.getn(uis)
-            i = 0
-            return iterFunc
-        end
-    else -- Optimized version for vanilla
-        local PTUnitFrames = PTUnitFrames
-        local uis
-        local i = 0
-        local len = 0
-        local iterFunc = function()
-            i = i + 1
-            if i <= len then
-                return uis[i]
-            end
-        end
-        function UnitFrames(unit)
-            i = 0
-            uis = PTUnitFrames[unit]
-            len = uis and table.getn(uis) or 0
-            return iterFunc
-        end
+    end
+    function UnitFrames(unit)
+        i = 0
+        uis = PTUnitFrames[unit]
+        len = uis and table.getn(uis) or 0
+        return iterFunc
     end
 end
 
@@ -264,10 +228,7 @@ local function initUnitFrames()
     CreateUnitFrameGroup("Raid", "raid", RaidUnits, false, getSelectedProfile("Raid"))
     CreateUnitFrameGroup("Raid Pets", "raid", RaidPetUnits, true, getSelectedProfile("Raid Pets"))
     CreateUnitFrameGroup("Target", "all", TargetUnits, false, getSelectedProfile("Target"), false)
-    if util.IsSuperWowPresent() then
-        CreateUnitFrameGroup("Focus", "all", PTUnitProxy.CustomUnitsMap["focus"], false, getSelectedProfile("Focus"), false)
-        CreateUnitFrameGroup("Enemy", "all", PTUnitProxy.CustomUnitsMap["enemy"], false, getSelectedProfile("Enemy"), false)
-    end
+    -- Phase 4: Focus and Enemy frame groups removed (SuperWoW-only). Multi-focus deferred to v2.1.
 
     local baseCondition = UnitFrameGroups["Target"].ShowCondition
     UnitFrameGroups["Target"].ShowCondition = function(self)
@@ -290,25 +251,7 @@ function OnAddonLoaded()
     InitOverrideBindingsMapping()
     InitBindingDisplayCache()
 
-    if util.HasModVersion("Nampower", util.Nampower_v3_0) then
-        SetCVar("NP_EnableAuraCastEvents", 1)
-        SetCVar("NP_EnableSpellHealEvents", 1)
-    end
-
-    if util.IsSuperWowPresent() then
-        -- In case other addons override unit functions, we want to make sure we're using their functions
-        PTUnitProxy.CreateUnitProxies()
-
-        -- Do it again after all addons have loaded
-        local frame = CreateFrame("Frame")
-        local reapply = GetTime() + 0.1
-        frame:SetScript("OnUpdate", function()
-            if GetTime() > reapply then
-                PTUnitProxy.CreateUnitProxies()
-                frame:SetScript("OnUpdate", nil)
-            end
-        end)
-    end
+    -- Phase 4: Nampower SetCVar + PTUnitProxy reapply removed (capability flags hardcoded false).
 
     if not _G.PTRoleCache then
         _G.PTRoleCache = {}
@@ -319,52 +262,8 @@ function OnAddonLoaded()
     AssignedRoles = _G.PTRoleCache[GetRealmName()]
     PruneAssignedRoles()
 
-    if util.IsSuperWowPresent() then
-        PTUnit.UpdateGuidCaches()
-
-        local customUnitUpdater = CreateFrame("Frame", "PTCustomUnitUpdater")
-        local nextUpdate = GetTime() + 0.25
-        -- Older versions of SuperWoW had an issue where units that aren't part of normal units wouldn't receive events,
-        -- so updates are done manually
-        local needsManualUpdates = util.SuperWoWFeatureLevel < util.SuperWoW_v1_4
-        local existing = {}
-        local nextCleanup = GetTime() + 10
-        customUnitUpdater:SetScript("OnUpdate", function()
-            if GetTime() > nextUpdate then
-                nextUpdate = GetTime() + 0.25
-
-                for guid, units in pairs(GUIDCustomUnitMap) do
-                    local exists = UnitExists(guid) == 1
-                    local needsUpdate = false
-                    if (existing[guid] ~= nil) ~= exists then
-                        existing[guid] = exists or nil
-                        needsUpdate = true
-                    end
-
-                    if needsManualUpdates or needsUpdate then
-                        PTUnit.Get(guid):UpdateAuras()
-                        for _, unit in ipairs(units) do
-                            for ui in UnitFrames(unit) do
-                                ui:UpdateAll()
-                                ui:UpdateIncomingHealing()
-                            end
-                        end
-                    end
-                end
-
-                if GetTime() > nextCleanup then
-                    nextCleanup = GetTime() + 10
-                    for guid in pairs(existing) do
-                        if not GUIDCustomUnitMap[guid] then
-                            existing[guid] = nil
-                        end
-                    end
-                end
-            end
-        end)
-    else
-        PTUnit.CreateCaches()
-    end
+    -- Phase 4: PTCustomUnitUpdater frame removed (SuperWoW-only custom-unit GUID polling).
+    PTUnit.CreateCaches()
     PuppeteerSettings.UpdateTrackedDebuffTypes()
     PTProfileManager.InitializeDefaultProfiles()
 
@@ -446,13 +345,8 @@ function OnAddonLoaded()
                     ..colorize(" to see commands.", 0.5, 1, 0.5))
             end
     
-            if not util.IsSuperWowPresent() and util.IsNampowerPresent() then
-                DEFAULT_CHAT_FRAME:AddMessage(colorize("[Puppeteer] ", 1, 0.4, 0.4)..colorize("WARNING: ", 1, 0.2, 0.2)
-                    ..colorize("You are using Nampower without SuperWoW, which will cause heal predictions to be wildly inaccurate "..
-                    "for you and your raid members! It is highly recommended to install SuperWoW.", 1, 0.4, 0.4))
-            end
-
             -- Phase 2b: HealComm-1.0 SuperWoW conflict check removed; replaced by LibHealComm-4.0 in Phase 3.
+            -- Phase 4: Nampower-without-SuperWoW warning removed (capability flags hardcoded false).
         end)
     end
 
@@ -746,13 +640,9 @@ function CheckGroup()
             SetPartyFramesEnabled(not PTOptions.DisablePartyFrames.InParty)
         end
     end
-    local superwow = util.IsSuperWowPresent()
     if GuidRoster then
         GuidRoster.ResetRoster()
         GuidRoster.PopulateRoster()
-    end
-    if superwow then
-        PTUnit.UpdateGuidCaches()
     end
     for _, unit in ipairs(util.AllRealUnits) do
         local exists, guid = UnitExists(unit)
@@ -771,9 +661,8 @@ function CheckGroup()
     for _, group in pairs(UnitFrameGroups) do
         group:EvaluateShown()
     end
-    if not superwow then -- If SuperWoW isn't present, the units may have shifted and thus require a full scan
-        PTUnit.UpdateAllUnits()
-    end
+    -- Without SuperWoW units may have shifted; do a full scan every CheckGroup tick.
+    PTUnit.UpdateAllUnits()
     for _, ui in ipairs(AllUnitFrames) do
         if ui:IsShown() then
             ui:UpdateRange()
