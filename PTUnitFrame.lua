@@ -766,6 +766,43 @@ end
 
 AuraTooltip = CreateFrame("GameTooltip", "PTAuraTooltip", UIParent, "GameTooltipTemplate")
 
+-- Slice 2: aura buttons are EnableMouse(false) when SCC is enabled (so clicks
+-- pass through to the per-frame secure overlay); that also kills the
+-- OnEnter/OnLeave-driven tooltip path. Replace it with cursor-position
+-- polling. Cheap bounds check on auraPanel up front -> only iterates icons
+-- when the cursor is roughly in the right neighborhood. Singleton frame so
+-- there's exactly one OnUpdate firing per frame regardless of how many unit
+-- frames exist.
+local auraHoverPoller = CreateFrame("Frame")
+local hoveredAuraComponent = nil
+auraHoverPoller:SetScript("OnUpdate", function()
+    if not (Puppeteer.SecureClickCast and Puppeteer.SecureClickCast.IsEnabled()) then return end
+    local matched = nil
+    for _, ui in ipairs(Puppeteer.AllUnitFrames) do
+        local panel = ui.auraPanel
+        if panel and panel:IsVisible() and MouseIsOver(panel) then
+            for _, aura in ipairs(ui.auraIcons) do
+                local f = aura.frame
+                if f:IsVisible() and MouseIsOver(f) then
+                    matched = aura
+                    break
+                end
+            end
+            break
+        end
+    end
+    if matched ~= hoveredAuraComponent then
+        if hoveredAuraComponent then
+            AuraTooltip:Hide()
+        end
+        if matched then
+            local frame = matched.frame
+            frame.unitFrame:ApplyAuraTooltip(frame)
+        end
+        hoveredAuraComponent = matched
+    end
+end)
+
 local AURA_DURATION_TEXT_FLASH_THRESHOLD = 5
 local AURA_DURATION_TEXT_LOW_THRESHOLD = 30
 -- A map of all seconds below the flash threshold to an array of colors to interpolate
@@ -790,7 +827,7 @@ end
 function PTUnitFrame:AllocateAura()
     local frame = CreateFrame("Frame", nil, self.auraPanel)
     frame.unitFrame = self
-    
+
     local icon = frame:CreateTexture(nil, "ARTWORK")
     local border = frame:CreateTexture(nil, "OVERLAY")
     border:SetTexture("Interface\\Buttons\\UI-Debuff-Overlays")
@@ -893,6 +930,18 @@ function PTUnitFrame:GetUnusedAuraButton()
         button:SetScript("OnMouseUp", PTUnitFrame.AuraButton_OnMouseUp)
         button:SetScript("OnEnter", PTUnitFrame.AuraButton_OnEnter)
         button:SetScript("OnLeave", PTUnitFrame.AuraButton_OnLeave)
+        -- Slice 2 v2: in secure mode, aura buttons should NOT capture mouse.
+        -- Clicks pass through to the per-frame secure overlay underneath, which
+        -- dispatches via WoW's secure code. Pre-Slice-2, aura buttons captured
+        -- clicks and forwarded via the legacy insecure path (blocked in combat).
+        -- An earlier attempt put SecureActionButtons here, but Bug 8 (secure
+        -- descendant -> parent's Hide/SetPoint protected) broke aura layout
+        -- updates during combat. EnableMouse(false) is much simpler. NOTE: this
+        -- also disables OnEnter/OnLeave -> aura-icon tooltips on hover are lost
+        -- in secure mode; will be restored by a follow-up slice via polling.
+        if PT.SecureClickCast and PT.SecureClickCast.IsEnabled() then
+            button:EnableMouse(false)
+        end
         table.insert(self.auraButtons, button)
     end
     return button
@@ -924,7 +973,7 @@ function PTUnitFrame.AuraButton_OnMouseUp()
         local this = this
         PTUtil.RunLater(function()
             this:Hide()
-            
+
             table.insert(this.unitFrame.auraButtonPool, this)
         end)
     end
